@@ -1,3 +1,9 @@
+Utiliser Internet du Windows raccordé
+- sous Win, cliq droit sur connexion, props, partage, partage avec la bonne connexion
+- vérifier que la connexion usb n'a pas une config statique (Win a tendance à faire de la merde)
+- route add default gw 192.168.7.1
+- vim /etc/resolv.conf -> nameserver 8.8.8.8 en premier
+
 ln -s /usr/share/zoneinfo/Europe/Paris /etc/localtime
 
 Créer un clone pushable (a non-working directory) depuis la distance (sinon il n'y a que des pulls)
@@ -22,3 +28,10 @@ Donc pour la faire marcher, j'ai :
 - branché le BBB sur alim 5V 10A par jack
 - attendu pour ssh
 - xboxdrv --silent &
+
+Install pip pour Python3 : apt-get install python3-pip
+
+Adafruit_BBIO est sensée être "prête" pour Python3. Sauf que... non.
+Et smbus peut-être, mais c'est pas gagné...
+
+Lib C GPIO testée : BBIOlib
