@@ -62,3 +62,7 @@ Config de vim : http://vim.wikia.com/wiki/Indenting_source_code
 
 Lib C GPIO testée : BBIOlib
 
+Avoir des versions un peu récentes des outils :
+Infos : http://backports.debian.org/Instructions/
+Ligne à rajouter (plutôt que celle suggérée au dessus) : deb http://ftp.debian.org/debian wheezy-backports main contrib non-free
+Installons seulement git : apt-get -t wheezy-backports install git
