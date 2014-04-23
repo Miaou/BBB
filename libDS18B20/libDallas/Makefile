@@ -15,7 +15,7 @@ endif
 
 
 CC=gcc
-CFLAGS=$(MODE_CFLAGS) -I$(PATH_BBBIO)BBBio_lib/ -fPIC -fvisibility=hidden -L$(PATH_BBBIO)
+CFLAGS=$(MODE_CFLAGS) -I$(PATH_BBBIO)BBBio_lib/ -I. -fPIC -fvisibility=hidden -L$(PATH_BBBIO)
 LDFLAGS=$(MODE_LDFLAGS) -L$(PATH_BBBIO) -shared
 LIB_STA=-lBBBio
 LIB_DYN=-lrt

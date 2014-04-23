@@ -20,14 +20,10 @@
 
 // Controlling which functions are exported in the lib:
 //  (https://www.gnu.org/software/gnulib/manual/html_node/Exported-Symbols-of-Shared-Libraries.html)
-#define LIBDALLAS_API __attribute__((__visibility__("default")))
 
 
 
-#include "BBBiolib.h"
-#include <time.h>
-#include <stdio.h> // printf, debug only.
-
+#include "dallas.h"
 
 
 // Macro to wait some nanoseconds
@@ -237,7 +233,7 @@ LIBDALLAS_API int dallas_rom_read(char port, char pin, unsigned char *bRom)
         return -1;
     
     // Send a 0x33
-    write_byte(port, pin, 0x33);
+    write_byte(port, pin, READ_ROM);
     // Reads the 8 bytes
     for(i=0; i<8; ++i)
     {
@@ -251,7 +247,6 @@ LIBDALLAS_API int dallas_rom_read(char port, char pin, unsigned char *bRom)
 }
 
 
-typedef void (*SEARCH_CALLBACK)(unsigned char *);
 // Do Search: helper.
 // Does the search from bit number iFrom.
 //  If bRedo, resends the validated sequence contained in static bRom until bit iFrom,
@@ -272,7 +267,7 @@ int do_search(char port, char pin, unsigned char iFrom, char bRedo, SEARCH_CALLB
         if(! pulseInit(port, pin))
             return -1;
         // Sends a 0xF0
-        write_byte(port, pin, 0xF0);
+        write_byte(port, pin, SEARCH_ROM);
     }
     
     if(bRedo)
@@ -344,7 +339,66 @@ LIBDALLAS_API int dallas_rom_search(char port, char pin, SEARCH_CALLBACK found_r
     return do_search(port, pin, 0, 0, found_rom);
 }
 
+LIBDALLAS_API int dallas_skip_rom(char port, char pin, unsigned char operation)
+{
+    //send a 0xCC
+    write_byte(port, pin, SKIP_ROM);
+    write_byte(port, pin, operation);
+    if(operation == CONVERT_T || operation == COPY_SCRATCHPAD);
+    //need a strong pullup over here for these 2 operations, cf doc
+    //during at least 10ms 
+    return 0;
+}
 
 //- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 // Function Commands
 //- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+LIBDALLAS_API int dallas_read_scratchpad(char port, char pin, unsigned char *scratch)
+{
+    write_byte(port, pin, READ_SCRATCHPAD);
+    int i, status;
+
+    for(i = 0; i < 9; ++i)
+    {
+        status = read_byte(port, pin);
+        if(status < 0)
+            return -1;
+        scratch[i] = status;
+    }
+
+    return 0;
+}
+
+LIBDALLAS_API int dallas_read_temperature(char port, char pin)
+{
+    write_byte(port, pin, READ_SCRATCHPAD);
+    int i, status, temperature = 0;
+
+    for(i = 0; i < 2; ++i)
+    {
+        status = read_byte(port, pin);
+        if(status < 0)
+            return -1;
+
+        /*We keep all the bits whatever the resolution is.
+        It is user responsibility to remove all undesered bits by reading scratchpad
+        to get resolution(9 to 12 bits)*/
+        temperature += status<<(8*i);
+    } 
+    
+    pulseInit(port, pin);
+    return temperature;
+}
+
+LIBDALLAS_API int dallas_write_scratchpad(char port, char pin, unsigned char *data)
+{
+    int i;
+    for(i = 0; i < 3; ++i)
+    {
+        write_byte(port, pin, data[i]);
+    }
+    
+    return 0;
+    /*Aucun contrôle possible, ni sur write_byte, ni sur write_bit*/
+}
