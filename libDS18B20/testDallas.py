@@ -44,7 +44,9 @@ class Sensor :
 
     def ConvertTemperature(self) :
         lib.pulseInit(self.wire.port, self.wire.pin)
-        lib.
+        lib.write_byte(self.wire.port, self.wire.pin, CONVERT_T)
+        #must enable strong pullup
+
 class OneWire :
 #Toutes les communications commencent par lib.pulseInit()
 #suivie d'une commande rom lib.dallas_rom_cmd()
@@ -75,9 +77,15 @@ class OneWire :
                 break
         
         #quel est le format de callback??
-
+        #mauvaise question, comment identifier les bons IDs 64bits des faux?
     def __del__(self) :
         lib.dallas_free()
+
+    def AllConvertTemperature(self) :
+        lib.pulseInit(self.port, self.pin)
+        lib.dallas_rom_skip(self.port, self.pin, CONVERT_T)
+        #must enable strong pullup
+
 
 
 
