@@ -45,7 +45,8 @@ class SHT21 :
         self.bus = SMBus(busnum)
         #self.bus.open(busnum)
         self.Reset()
-        reg = self.ReadReg()
+        #reg = self.ReadReg()
+        reg = 0
         if (reg & 0x80) and (reg & 0x01):
             self.RH_res = 11
             self.T_res  = 11
@@ -136,17 +137,9 @@ class SHT21 :
         return crc==0
 
 if __name__ == '__main__':
-    try:
-        sensor = SHT21(0x40)
-    except:
-        pass
-    try:
-        print(sensor.getRH())
-    except:
-        print(-1.)
-    try:
-        print(sensor.getT())
-    except:
-        print(-1.)
+    sensor = SHT21(0x40)
+    print(sensor.getRH())
+    print(sensor.getT())
+
 
 

@@ -15,7 +15,7 @@ sys.path.append('../libDS18B20/libDallas-PRU')
 sys.path.append('../thermoLog')
 sys.path.append('../i2c')
 
-#from dallas import OneWire, Sensor, pruicss
+from dallas import OneWire, Sensor, pruicss
 
 from dao import DAO
 from threading import Thread
@@ -29,10 +29,11 @@ class Bulk:
     def __init__(self):
         self.shtTemp = 0
         self.shtRH = 0
+        self.dsTemp = []
 
 def workerSHT(iface, stop):
     sht = SHT21(0x40, 1)
-    print('Starting measures')
+    print('Starting SHT measures')
     while not stop.value:
         try:
             iface.shtRH = sht.getRH()
@@ -43,19 +44,39 @@ def workerSHT(iface, stop):
         finally:
             time.sleep(1)
 
-    print('End of measurement')
+    print('End of SHT measurement')
 
-if True:
+def workerDS(iface, stop):
+    wire = OneWire(9,13,9,14,pruicss)
+    wire.SearchMoreRoms()
+    i = 1
+    for sensor in wire.dSensors.values():
+        iface.dsTemp.append(sensor)
+        sensor.num = i
+        i += 1
+
+    print('Starting DS measures')
+    while not stop.value:
+        wire.ConvertTemperatures()
+        wire.ReadTemperatures()
+
+        #for rom in iface.dsTemp:
+        #    iface.dsTemp[rom] = 0
+        time.sleep(1)
+    
+    print('End of DS measurement')
+
+iface = Bulk()
+stop = Value('b', False)
+db = 'essai.db'
+if False:
     #time.sleep(15)
-    db = 'essai.db'
     dao = DAO(db)
     dao.newSensor(b'SHT21', b'RH')
     dao.newSensor(b'SHT21', b'Temperature')
     dao.newWave(sComment='Premier essai avec la nouvelle BBB')
     dao.commentSensor(1, 'Derriere le PC', 'Air(%RH)')
     dao.commentSensor(2, 'Derriere le PC', 'Air(°C)')
-    iface = Bulk()
-    stop = Value('b', False)
     Thread(target=workerSHT, args=(iface, stop)).start()
 
     try:
@@ -66,4 +87,22 @@ if True:
     except KeyboardInterrupt:
         print('End of record')
         stop.value = True
+
+if True:
+    dao = DAO(db)
+    dao.newSensor(b'DS18B20', b'Temperature')
+    dao.newWave(sComment='Remise en route du PRU')
+    dao.commentSensor(1, 'Derrière le PC', 'Air(°C)')
+    Thread(target=workerDS, args=(iface, stop)).start()
+    time.sleep(5)
+
+    try:
+        while True:
+            for sensor in iface.dsTemp:
+                dao.newMeasure(sensor.num, sensor.GetTemperature())
+                time.sleep(5)
+    except KeyboardInterrupt:
+        print('End of record')
+        stop.value = True
+
 
