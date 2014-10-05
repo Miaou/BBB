@@ -1,2 +1,7 @@
 ln -s /usr/share/zoneinfo/Europe/Paris /etc/localtime
+
+Créer un clone pushable (a non-working directory) depuis la distance (sinon il n'y a que des pulls)
 git clone --bare . ../bbb.git
+
+Désactiver le reverse-DNS-lookup qui peut prendre des plombes, ouvrir /etc/ssh/sshd_config
+UseDNS no
