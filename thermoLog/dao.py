@@ -1,4 +1,5 @@
 #
+# -*- coding: utf-8 -*-
 # Python2/3 compatible
 
 
