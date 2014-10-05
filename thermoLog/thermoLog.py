@@ -17,7 +17,7 @@ ser = serial.Serial('/dev/ttyO1') # 9600, as connection between BT -> Android is
 def log(ser, iSecInterval):
     dao = DAO()
     ser.flushInput()
-    t0 = time.time()
+    t0 = time.time()-iSecInterval
     try:
         while True: # Moche caca !!
             t = time.time()
