@@ -1,0 +1,4 @@
+Le thermo sans contact est sur Arduino, pour l'instant, puisque je sais pas encore ce qu'est le
+ "repeatable start I2C", et que visiblement, à cause de ça, l'I2C ne marche pas avec...
+
+Je récup les infos sur par UART, sur le UART1, et log de temps en temps (l'ardui envoie ~40 spl/s)
