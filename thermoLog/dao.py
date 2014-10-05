@@ -1,4 +1,5 @@
 #
+# -*- coding: utf-8 -*-
 # Python2/3 compatible
 
 # Index-based access functions are ... bad. It relies on the fact that a given row in the database is
@@ -29,23 +30,27 @@ import sys
 
 
 # Handling compatibility for both Py2 and 3
-if sys.hexversion > 0x03000000:
-    printme = lambda *args,**kwargs: print(*args, **kwargs)
-else:
-    printme = lambda *args,**kwargs: sys.stdout.write(' '.join(*(args+'\n')))
+#if sys.hexversion > 0x03000000:
+#    printme = lambda *args,**kwargs: print(*args, **kwargs)
+#else:
+printme = lambda *args,**kwargs: sys.stdout.write(' '.join(args+('\n',))) # Should analyze kwargs, and search for sep, end, ...
+#if sys.hexversion < 0x03000000:
+#    from io import open
 
 
-
+sDB='thermoLog.db'
 class DAO(object):
     #RAW_TO_CELSIUS = lambda i:i*.02-273.15 # Python3-style
     @staticmethod
     def RAW_TO_CELSIUS(i):
         return i*.02-273.15
 
-    def __init__(self, sDB='thermoLog.db', curWave=int(time.time())):
+    def __init__(self, sDB, curWave=None):
         self.sDB = sDB
         self.db = sqlite3.connect(self.sDB)
         self.db.execute('PRAGMA foreign_keys=1')
+        if curWave == None:
+            curWave=int(time.time())
         self.curWave = curWave
         with self.db as db:
             db.execute('CREATE TABLE IF NOT EXISTS logThermo (wave INTEGER, time INTEGER,\
@@ -107,12 +112,13 @@ class DAO(object):
 
 
 
-
+# Any name but DAODrawer works with super()... That smells like a bug.
+# No. The bug is that del DAODraws is executed while parsing...
 class DAODrawer(DAO):
-    def __init__(self, sDB='thermoLog.db', curWave=int(time.time())):
+    def __init__(self, sDB, curWave=None):
         global pylab, np
-        #super(DAODrawer,self).__init__(sDB, curWave)
-        super().__init__(sDB, curWave)
+        super(DAODrawer,self).__init__(sDB, curWave)
+        #super().__init__(sDB, curWave)
         if not pylab:
             printme('Import pylab,numpy...', end='')
             try:
@@ -120,8 +126,8 @@ class DAODrawer(DAO):
                 import numpy as np
             except ImportError:
                 printme('They are not available! Don\'t try to use DAODrawer again, please!')
-                del DAODrawer # FUCK YEAH (?)
-                del self
+                #del DAODrawer # FUCK YEAH (?)
+                del self # Useless, because only the reference "self" to the object is destroyed ^^
                 return
             printme(' Ok')
 
@@ -145,18 +151,18 @@ class DAODrawer(DAO):
     def gnuplotByIndex(self, i):
         self._gnuplotPts(self.listEntriesByIndex(i), 'n°{}'.format(i))
     def _gnuplotPts(self, lPts, name):
-        f = open('tempgnu', 'w', encoding='utf-8')
-        f.write('set term dumb 180 50 \nset title "Jeu de température {}"\n'.format(name))
-        f.write("plot 'tempgnu' using 1:2 title 'TempCapteur' with lines, 'tempgnu' using 1:3 title 'TempSansContact' with dots\n\n")
+        f = open('tempgnu', 'wb')#, encoding='utf-8')
+        f.write(b'set term dumb 180 50 \nset title "Jeu de température {}"\n'.format(name))
+        f.write(b"plot 'tempgnu' using 1:2 title 'TempCapteur' with lines, 'tempgnu' using 1:3 title 'TempSansContact' with dots\n\n")
         for x,y,z in lPts:
-           f.write("{:.02f} {:.02f} {:.02f}\n".format(x-lPts[0][0],y,z))
-        f.write("e\n")
+           f.write(b"{:.02f} {:.02f} {:.02f}\n".format(x-lPts[0][0],y,z))
+        f.write(b"e\n")
         f.close()
         gnuplot = subprocess.Popen(["gnuplot","tempgnu"],
                            stdout=subprocess.PIPE)
         txt = gnuplot.communicate()[0]
         os.remove('tempgnu')
-        print(txt.decode())
+        print(txt.decode('utf-8'))
 
 
 
