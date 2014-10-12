@@ -5,3 +5,20 @@ git clone --bare . ../bbb.git
 
 Désactiver le reverse-DNS-lookup qui peut prendre des plombes, ouvrir /etc/ssh/sshd_config
 UseDNS no
+
+Pour le Joystick,
+https://wiki.archlinux.org/index.php/joystick, mais on n'a pas xpad de déjà installé
+http://www.omgubuntu.co.uk/2013/07/dealing-with-xbox-controllers-in-ubuntu
+Pour l'utiliser
+- solution pygame
+- solution sans pygame : http://www.raspberrypi.org/forums/viewtopic.php?t=19969&p=491414
+
+Ceci dit, pour l'instant, y'a pas d'énergie sur le port usb...
+C'est un problème seulement si rien n'est branché au démarrage du BBB...
+#Non: Il semble que brancher la manette pendant le boot foire complètement le port USB
+Il semble que brancher la manette sans alim jack foire simplement
+Donc pour la faire marcher, j'ai :
+- branché la manette
+- branché le BBB sur alim 5V 10A par jack
+- attendu pour ssh
+- xboxdrv --silent &
