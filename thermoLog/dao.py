@@ -10,12 +10,29 @@
 # So it should be moved to a greater structure, where each sensor could have a table
 # There would be a table (waveID, measureID, time), multiple tables (measureID, rawMeasure)
 #  and a table (waveID, waveName) and a table (sensorName, tableName)...
-# Maybe instead of sensors table, a generic (sensorID, measureID, rawMeasure) with a table (sensorID, sensorType, sensorName)
+# Maybe instead of sensors table, a generic (sensorID, measureID, rawMeasure) with a table (sensorID, sensorType, sensorName, exprRawToCelsius)
 #  but be careful when being too generic...
 
 # Note about naming graphs: may not be such a good idea... maybe add a more "comment" system rather than referencing by name...
 
 # http://stackoverflow.com/questions/22188846/sqlite-mysql-big-table-vs-multiple-small-tables
+# -> small tables is more "normalized" (only one version of the thruth), and more optimized for insert/access
+# -> a large table avoids joins, but ... how to say that... they will be rare.
+
+# So, the proposed scheme fot the tables:
+# Sensors: sensorID PRIMARY, sensorName, exprRawToCelsius
+# The debate pro/con a table per sensor is vivid. Cons: difficult naming and tedious API
+# Waves: waveID PRIMARY, timeStarted INTEGER, comment (long text or nothing, not name, name is tedious and difficult to keep short)
+#  Say, the waves IDs will now be AUTOINCREMENT instead of "random" integer: it will enforce the listing, even if it breaks multi-databaseS-wide indexing...
+# SensorComment: sensorID FOREIGN, waveID FOREIGN, txtDescPlac, txtPlotLegend
+# Measures: waveID FOREIGN, time INTEGER (in secs), sensorID FOREIGN, rawValue INTEGER, PRIMARY KEY (waveID, time, sensorID)
+
+# To do new measures: acquire a new waveID, optionnally leave a comment, select existing sensorsIDs, insert measures
+
+# exprRawToCelsius: an expression to be evaluated for each sensor to convert raw data to celsius,
+#  should have only one local variable,
+#  should be eval()-safe, so check it out, because it can be a source of code injection.
+#  should tolerate the use of things like struct (?) maybe not, it would allow open(). So only struct ?
 
 
 
