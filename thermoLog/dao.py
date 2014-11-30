@@ -1,4 +1,3 @@
-#
 # -*- coding: utf-8 -*-
 # Python2/3 compatible
 
@@ -24,6 +23,7 @@ import sqlite3
 import time
 pylab = None
 np = None
+gnuplot = None
 import subprocess # gnuplot
 import os
 import sys
@@ -31,11 +31,9 @@ import sys
 
 # Handling compatibility for both Py2 and 3
 #if sys.hexversion > 0x03000000:
-#    printme = lambda *args,**kwargs: print(*args, **kwargs)
-#else:
-printme = lambda *args,**kwargs: sys.stdout.write(' '.join(args+('\n',))) # Should analyze kwargs, and search for sep, end, ...
-#if sys.hexversion < 0x03000000:
-#    from io import open
+# Print: sep=' ', end='\n', file=sys.stdout)
+printme = lambda *args,**kwargs: kwargs.get('file',sys.stdout).write(kwargs.get('sep', ' ').join(args+(kwargs.get('end','\n'),)))
+
 
 
 sDB='thermoLog.db'
@@ -119,23 +117,47 @@ class DAODrawer(DAO):
         global pylab, np
         super(DAODrawer,self).__init__(sDB, curWave)
         #super().__init__(sDB, curWave)
-        if not pylab:
+
+    @staticmethod
+    def assertPylab():
+        global pylab, np
+        if pylab and np:
+            return True
+        try:
             printme('Import pylab,numpy...', end='')
-            try:
-                import pylab
-                import numpy as np
-            except ImportError:
-                printme('They are not available! Don\'t try to use DAODrawer again, please!')
-                #del DAODrawer # FUCK YEAH (?)
-                del self # Useless, because only the reference "self" to the object is destroyed ^^
-                return
-            printme(' Ok')
+            import pylab
+            import numpy as np
+        except ImportError:
+            printme(' Fail.\nPylab/numpy unavailable, sorry bro.')
+            #printme('They are not available! Don\'t try to use DAODrawer again, please!')
+            #del DAODrawer # FUCK YEAH (?)... but make DAODrawer global, otherwise it will be bound to a local variable that is not set yet.
+            return False
+        printme(' Ok')
+        return True
+    @staticmethod
+    def assertGnuplot():
+        global gnuplot
+        if gnuplot:
+            return True
+        try:
+            printme('Testing gnuplot...', end='')
+            subprocess.call(['gnuplot', '-V'])
+            gnuplot = True
+        except OSError:
+            printme(' Fail.\nGnuplot is not available from working directory, sorry bro.')
+            return False
+        printme(' Ok')
+        return True
+        
+        
 
     def pylabByName(self, name):
         self._pylabPts(self.listEntriesByName(name), name)
     def pylabByIndex(self, i):
         self._pylabPts(self.listEntriesByIndex(i), 'n°{}'.format(i))
     def _pylabPts(self, lPts, name):
+        if not DAODrawer.assertPylab():
+            return
         a,b,c = list(zip(*lPts))
         a = np.array(a)-a[0]
         pylab.plot(a,b)
@@ -151,9 +173,11 @@ class DAODrawer(DAO):
     def gnuplotByIndex(self, i):
         self._gnuplotPts(self.listEntriesByIndex(i), 'n°{}'.format(i))
     def _gnuplotPts(self, lPts, name):
+        if not DAODrawer.assertGnuplot():
+            return
         f = open('tempgnu', 'wb')#, encoding='utf-8')
-        f.write(b'set term dumb 180 50 \nset title "Jeu de température {}"\n'.format(name))
-        f.write(b"plot 'tempgnu' using 1:2 title 'TempCapteur' with lines, 'tempgnu' using 1:3 title 'TempSansContact' with dots\n\n")
+        f.write('set term dumb 180 50 \nset title "Jeu de température {}"\n'.format(name).encode())
+        f.write("plot 'tempgnu' using 1:2 title 'TempCapteur' with lines, 'tempgnu' using 1:3 title 'TempSansContact' with dots\n\n".encode())
         for x,y,z in lPts:
            f.write(b"{:.02f} {:.02f} {:.02f}\n".format(x-lPts[0][0],y,z))
         f.write(b"e\n")
