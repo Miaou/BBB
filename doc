@@ -1,3 +1,10 @@
+Utiliser Internet du Windows raccordé
+- sous Win, cliq droit sur connexion, props, partage, partage avec la bonne connexion
+- vérifier que la connexion usb n'a pas une config statique (Win a tendance à faire de la merde)
+- route add default gw 192.168.7.1
+- vim /etc/resolv.conf -> nameserver 8.8.8.8 en premier
+- ntpdate pool.ntp.ord pour mettre à jour l'heure
+
 ln -s /usr/share/zoneinfo/Europe/Paris /etc/localtime
 
 Créer un clone pushable (a non-working directory) depuis la distance (sinon il n'y a que des pulls)
@@ -5,3 +12,27 @@ git clone --bare . ../bbb.git
 
 Désactiver le reverse-DNS-lookup qui peut prendre des plombes, ouvrir /etc/ssh/sshd_config
 UseDNS no
+
+Pour le Joystick,
+https://wiki.archlinux.org/index.php/joystick, mais on n'a pas xpad de déjà installé
+http://www.omgubuntu.co.uk/2013/07/dealing-with-xbox-controllers-in-ubuntu
+Pour l'utiliser
+- solution pygame
+- solution sans pygame : http://www.raspberrypi.org/forums/viewtopic.php?t=19969&p=491414
+
+Ceci dit, pour l'instant, y'a pas d'énergie sur le port usb...
+C'est un problème seulement si rien n'est branché au démarrage du BBB...
+#Non: Il semble que brancher la manette pendant le boot foire complètement le port USB
+Il semble que brancher la manette sans alim jack foire simplement
+Donc pour la faire marcher, j'ai :
+- branché la manette
+- branché le BBB sur alim 5V 10A par jack
+- attendu pour ssh
+- xboxdrv --silent &
+
+Install pip pour Python3 : apt-get install python3-pip
+
+Adafruit_BBIO est sensée être "prête" pour Python3. Sauf que... non.
+Et smbus peut-être, mais c'est pas gagné...
+
+Lib C GPIO testée : BBIOlib
