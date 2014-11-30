@@ -3,6 +3,7 @@ Utiliser Internet du Windows raccordé
 - vérifier que la connexion usb n'a pas une config statique (Win a tendance à faire de la merde)
 - route add default gw 192.168.7.1
 - vim /etc/resolv.conf -> nameserver 8.8.8.8 en premier
+- ntpdate pool.ntp.ord pour mettre à jour l'heure
 
 ln -s /usr/share/zoneinfo/Europe/Paris /etc/localtime
 
