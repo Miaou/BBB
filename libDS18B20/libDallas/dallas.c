@@ -26,6 +26,7 @@
 
 #include "BBBiolib.h"
 #include <time.h>
+#include <stdio.h> // printf, debug only.
 
 
 
@@ -128,7 +129,7 @@ int write_bit(char port, char pin, char bit)
     WAIT_NANO(tBegins, tEnd, 75000);
 
     iolib_setdir(port, pin, BBBIO_DIR_IN);
-    WAIT_NANO(tEnd, tBegins, 1000); 
+    WAIT_NANO(tEnd, tBegins, 10000); // Leave it 10 instead of just 1, to be sure !
     
     return 0;
 }
@@ -155,16 +156,27 @@ int read_bit(char port, char pin)
     iolib_setdir(port, pin, BBBIO_DIR_OUT); // Considered <1µs
     WAIT_NANO(tBegins, tEnd, 1000); // Will be more than 1µs
     iolib_setdir(port, pin, BBBIO_DIR_IN);
-    WAIT_NANO(tBegins, tEnd, 10000);
+    // We have 15µs to read the value, the later the better.
+    //  Raise the value if CRCs are invalid
+    //  Lower the value if read_bit returns -1 too easily
+    //   (beware, because of something unknow, 
+    //   you can't hope for miracles, and sometimes something takes around 1ms...)
+    //   Interesting fact, changing overall length of the read slot affects greatly
+    //   the false negative. For now, having 60000 -> 75% success, 63000 -> 95% success.
+    //   THIS IS F*CK*D UP
+    WAIT_NANO(tBegins, tEnd, 8000);
     bBit = is_high(port, pin);
 
     // Now we check that the 15µs window was not exceeded
     //  Because clock_gettime takes some time, we could conclude to a false negative...
     clock_gettime(CLOCK_REALTIME, &tEnd);
     nNanosec = nanodiff(&tBegins, &tEnd);
-    WAIT_NANO(tBegins, tEnd, 60000);
+    WAIT_NANO(tBegins, tEnd, 63000); // 60+safety.
     if(nNanosec == 0xDEADBEEF || nNanosec > 15000)
+    {
+        //printf("Time frame was missed: %u nanosecs elapsed\n", nNanosec);
         return -1;
+    }
     return bBit;
 }
 
@@ -214,6 +226,77 @@ LIBDALLAS_API int read_byte(char port, char pin)
 //  (now at http://pdfserv.maximintegrated.com/en/an/AN937.pdf)
 //  After reading that, you might understand figure 10 of the DS18B20's datasheet...
 //- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+// How do you avoid overflows in this case ???
+LIBDALLAS_API int dallas_rom_read(char port, char pin, unsigned char *bRom)
+{
+    //unsigned char bRom[8];
+    int i, status;
+
+    if(! pulseInit(port, pin) || ! bRom)
+        return -1;
+    
+    // Send a 0x33
+    write_byte(port, pin, 0x33);
+    // Reads the 8 bytes
+    for(i=0; i<8; ++i)
+    {
+        status = read_byte(port, pin);
+        if(status < 0)
+            return -1;
+        bRom[i] = status;
+    }
+    
+    return 0;
+}
+
+LIBDALLAS_API int dallas_rom_search(char port, char pin)
+{
+    unsigned char bRom[8]; // Least significant bit firts, least significant byte first (little endian)
+    int i, status;
+    unsigned char bit0, bit1;
+
+    if(! pulseInit(port, pin))
+        return -1;
+
+    // Sends a 0xF0
+    write_byte(port, pin, 0xF0);
+    // Imagine first that there are only 1 DS
+    for(i=0; i<64; ++i)
+    {
+        status = read_bit(port, pin);
+        if(status < 0)
+            return -1;
+        bit0 = status;
+        status = read_bit(port, pin);
+        if(status < 0)
+            return -1;
+        bit1 = status;
+
+        if(bit0 && !bit1)
+        {
+            // All devices have a 0, so we select them all
+            bRom[i/8] &= ~(1<<(i%8));
+            write_bit(port, pin, 0);
+        }
+        else if(!bit0 && bit1)
+        {
+            // All devices have a 1, so we select them all
+            bRom[i/8] |= (1<<(i%8));
+            write_bit(port, pin, 1);
+        }
+        else if(!bit0 && !bit1)
+        {
+            // Both 0 and 1 are found
+        }
+        else // bit0 && bit1
+            // Devices are not responding.
+            return -1;
+    }
+
+    return 0;
+}
+
 
 //- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 // Function Commands

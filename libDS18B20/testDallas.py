@@ -13,12 +13,26 @@ lib.dallas_init()
 #    print(lib.pulseInit(9,13))
 
 # Test Read ROM
-l = []
-if lib.pulseInit(9,13):
-    lib.write_byte(9,13,0x33)
-    for i in range(8): # Read 8 bytes
-        l.append(lib.read_byte(9,13))
+if False:
+    l = []
+    if lib.pulseInit(9,13):
+        lib.write_byte(9,13,0x33)
+        for i in range(8): # Read 8 bytes
+            l.append(lib.read_byte(9,13))
+    print(l)
+
+# Test new read rom
+if True:
+    n = 0
+    for i in range(1000):
+        l = (c.c_ubyte*8)()
+        if lib.dallas_rom_read(9, 13, c.byref(l)) == 0:
+            #print(list(l))
+            n += 1
+        else:
+            #print('Read failed')
+            pass
+    print(n)
 
 lib.dallas_free()
 
-print(l)
