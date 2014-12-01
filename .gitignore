@@ -4,3 +4,7 @@
 __pycache__/
 # vim
 *.swp
+# Compilation
+*.o
+*.a
+*.so
