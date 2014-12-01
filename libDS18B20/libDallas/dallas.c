@@ -154,7 +154,7 @@ int read_bit(char port, char pin)
     pin_low(port, pin); // I hope this is effective when pin is in BBBIO_DIR_IN mode
     clock_gettime(CLOCK_REALTIME, &tBegins);
     iolib_setdir(port, pin, BBBIO_DIR_OUT); // Considered <1µs
-    WAIT_NANO(tBegins, tEnd, 1000); // Will be more than 1µs
+    WAIT_NANO(tBegins, tEnd, 2000); // Will be more than 1µs
     iolib_setdir(port, pin, BBBIO_DIR_IN);
     // We have 15µs to read the value, the later the better.
     //  Raise the value if CRCs are invalid
@@ -250,36 +250,61 @@ LIBDALLAS_API int dallas_rom_read(char port, char pin, unsigned char *bRom)
     return 0;
 }
 
-LIBDALLAS_API int dallas_rom_search(char port, char pin)
+
+typedef void (*SEARCH_CALLBACK)(unsigned char *);
+// Do Search: helper.
+// Does the search from bit number iFrom.
+//  If bRedo, resends the validated sequence contained in static bRom until bit iFrom,
+//  then continues the search.
+int do_search(char port, char pin, unsigned char iFrom, char bRedo, SEARCH_CALLBACK found_rom)
 {
-    unsigned char bRom[8]; // Least significant bit firts, least significant byte first (little endian)
+    // Least significant bit firts, least significant byte first (little endian)
+    static unsigned char bRom[8];
     int i, status;
     unsigned char bit0, bit1;
+    
+    
+    if(iFrom > 63)
+        return -5;
 
-    if(! pulseInit(port, pin))
-        return -1;
-
-    // Sends a 0xF0
-    write_byte(port, pin, 0xF0);
-    // Imagine first that there are only 1 DS
-    for(i=0; i<64; ++i)
+    if(bRedo || iFrom==0)
+    {
+        if(! pulseInit(port, pin))
+            return -1;
+        // Sends a 0xF0
+        write_byte(port, pin, 0xF0);
+    }
+    
+    if(bRedo)
+    {
+        for(i=0; i<iFrom; ++i)
+        {
+            // This is me following a route. Don't check if read is successful: we don't care.
+            // If it was a true fail, we will have no response later, and it will be filtered...
+            // Otherwise, it was a false negative, and we are glad to pursue...
+            read_bit(port, pin);
+            read_bit(port, pin);
+            write_bit(port, pin, (bRom[i/8]>>(i%8)));
+        }
+    }
+    for(i=iFrom; i<64; ++i)
     {
         status = read_bit(port, pin);
         if(status < 0)
-            return -1;
+            return -2;
         bit0 = status;
         status = read_bit(port, pin);
         if(status < 0)
-            return -1;
+            return -3;
         bit1 = status;
 
-        if(bit0 && !bit1)
+        if(!bit0 && bit1)
         {
             // All devices have a 0, so we select them all
             bRom[i/8] &= ~(1<<(i%8));
             write_bit(port, pin, 0);
         }
-        else if(!bit0 && bit1)
+        else if(bit0 && !bit1)
         {
             // All devices have a 1, so we select them all
             bRom[i/8] |= (1<<(i%8));
@@ -287,14 +312,36 @@ LIBDALLAS_API int dallas_rom_search(char port, char pin)
         }
         else if(!bit0 && !bit1)
         {
-            // Both 0 and 1 are found
+            // Both 0 and 1 are found. Our path must be split.
+            // First, we continue the branch were a 0 is at rank i
+            bRom[i/8] &= ~(1<<(i%8));
+            write_bit(port, pin, 0); // A write must follow each couple of reads
+            status  = 0;
+            status |= do_search(port, pin, i+1, 0, found_rom);
+            // Then, we redo the first part, use a 1 at rank i, and finish the branch
+            bRom[i/8] |= (1<<(i%8));
+            status |= do_search(port, pin, i+1, 1, found_rom);
+            // If status < 0, something went wrong, the results may be partial only.
+            return (! status) ? 0 : -6;
         }
         else // bit0 && bit1
             // Devices are not responding.
-            return -1;
+            return -4;
     }
 
+    // Only reach here if a branch is finished.
+    found_rom(bRom);
+    //for(i=0; i<8; ++i)
+    //    printf("0x%02X ", bRom[i]);
+    //printf("\n");
+
     return 0;
+}
+
+
+LIBDALLAS_API int dallas_rom_search(char port, char pin, SEARCH_CALLBACK found_rom)
+{
+    return do_search(port, pin, 0, 0, found_rom);
 }
 
 
