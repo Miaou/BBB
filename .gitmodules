@@ -1,3 +1,3 @@
 [submodule "libDS18B20/libBBBIO"]
 	path = libDS18B20/libBBBIO
-	url = git://github.com/VegetableAvenger/BBBIOlib
+	url = git://github.com/Miaou/BBBIOlib
