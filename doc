@@ -43,12 +43,21 @@ Installation de zsh : à faire.
 Adafruit_BBIO est sensée être "prête" pour Python3. Sauf que... non.
 Et smbus peut-être, mais c'est pas gagné...
 
-config de git :
+Config de git :
 [user]
         name = PMK on BBB
         email = wouf@github.com
 [core]
         editor = vim
+
+Config de vim : http://vim.wikia.com/wiki/Indenting_source_code
+:syntax on
+:color desert
+:set fileencoding=utf-8
+:set encoding=utf-8
+:set expandtab
+:set shiftwidth=4
+:set softtabstop=4
 
 Lib C GPIO testée : BBIOlib
 
