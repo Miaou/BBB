@@ -40,3 +40,97 @@ Adafruit_BBIO est sensée être "prête" pour Python3. Sauf que... non.
 Et smbus peut-être, mais c'est pas gagné...
 
 Lib C GPIO testée : BBIOlib
+
+Hello,
+
+I have 3 stock Rev.C element14 BeagleBone Black boards and cannot apt-get 
+install packages on any of them due to errors caused by an init script 
+called 'led-aging.sh'.
+Here's what I get:
+
+
+insserv: warning: script 'S18led_aging' missing LSB tags and overrides
+>
+> insserv: warning: script 'led_aging.sh' missing LSB tags and overrides
+>
+> insserv: There is a loop between service rmnologin and mountnfs if started
+>
+> insserv:  loop involving service mountnfs at depth 7
+>
+> insserv:  loop involving service networking at depth 6
+>
+> insserv: There is a loop between service led_aging and mountall if started
+>
+> insserv:  loop involving service mountall at depth 5
+>
+> insserv:  loop involving service checkroot-bootclean at depth 4
+>
+> insserv:  loop involving service urandom at depth 7
+>
+> insserv:  loop involving service checkfs at depth 5
+>
+> insserv: There is a loop between service rmnologin and mountdevsubfs if 
+> started
+>
+> insserv:  loop involving service mountdevsubfs at depth 2
+>
+> insserv:  loop involving service udev at depth 1
+>
+> insserv: There is a loop at service rmnologin if started
+>
+> insserv: There is a loop between service rmnologin and mountnfs-bootclean 
+> if started
+>
+> insserv:  loop involving service mountnfs-bootclean at depth 2
+>
+> insserv:  loop involving service mountall-bootclean at depth 1
+>
+> insserv:  loop involving service kbd at depth 11
+>
+> insserv: Starting led_aging.sh depends on rmnologin and therefore on 
+> system facility `$all' which can not be true!
+>
+> [...]
+>
+> insserv: Max recursions depth 99 reached
+>
+> insserv:  loop involving service capemgr.sh at depth 1
+>
+> insserv: Starting led_aging.sh depends on rmnologin and therefore on 
+> system facility `$all' which can not be true!
+>
+> [...]
+>
+> insserv: There is a loop at service led_aging if started
+>
+> insserv: Starting led_aging.sh depends on rmnologin and therefore on 
+> system facility `$all' which can not be true!
+>
+> insserv:  loop involving service hwclock at depth 4
+>
+> insserv: Starting led_aging.sh depends on rmnologin and therefore on 
+> system facility `$all' which can not be true!
+>
+> [...]
+>
+> insserv: There is a loop between service led_aging and mountall-bootclean 
+> if started
+>
+> insserv: Starting led_aging.sh depends on rmnologin and therefore on 
+> system facility `$all' which can not be true!
+>
+> insserv: Starting led_aging.sh depends on rmnologin and therefore on 
+> system facility `$all' which can not be true!
+>
+> insserv: exiting now without changing boot order!
+>
+> update-rc.d: error: insserv rejected the script header
+>
+Removing the script altogether using update-rc.d causes the problem to go 
+away, but I'd rather not solve it this way...
+What does the script do? Is this an element14 BBB-specific issue?
+I couldn't find any information about the script except for one forum post 
+in Chinese regarding LED driver development.
+
+Thanks in advance,
+Simon
