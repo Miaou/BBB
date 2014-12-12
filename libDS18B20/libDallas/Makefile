@@ -1,7 +1,7 @@
 # Quand on attaque un Makefile, on est toujours aussi emmerdé...
 
 
-PATH_BBBIO=../libBBBIO/
+PATH_BBBIO=./libBBBIO/
 #MODE=release
 
 ifeq ($(MODE),release)
