@@ -1,5 +1,5 @@
-[submodule "libDS18B20/libBBBIO"]
-	path = libDS18B20/libBBBIO
+[submodule "libDS18B20/libDallas/libBBBIO"]
+	path = libDS18B20/libDallas/libBBBIO
 	url = git://github.com/Miaou/BBBIOlib
 [submodule "libDS18B20/libDallas-PRU/am335x_pru_package"]
 	path = libDS18B20/libDallas-PRU/am335x_pru_package
