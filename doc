@@ -36,3 +36,8 @@ Adafruit_BBIO est sensée être "prête" pour Python3. Sauf que... non.
 Et smbus peut-être, mais c'est pas gagné...
 
 Lib C GPIO testée : BBIOlib
+
+Avoir des versions un peu récentes des outils :
+Infos : http://backports.debian.org/Instructions/
+Ligne à rajouter (plutôt que celle suggérée au dessus) : deb http://ftp.debian.org/debian wheezy-backports main contrib non-free
+Installons seulement git : apt-get -t wheezy-backports install git
