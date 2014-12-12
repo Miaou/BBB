@@ -1,3 +1,7 @@
+Changer la langue d'affichage (le problème avec les accents) : rajouter
+export LANG=en_US.utf8
+dans ~/.bashrc
+
 Utiliser Internet du Windows raccordé
 - sous Win, cliq droit sur connexion, props, partage, partage avec la bonne connexion
 - vérifier que la connexion usb n'a pas une config statique (Win a tendance à faire de la merde)
@@ -32,8 +36,28 @@ Donc pour la faire marcher, j'ai :
 
 Install pip pour Python3 : apt-get install python3-pip
 
+Problème des mises à jours : cf https://www.mail-archive.com/beagleboard@googlegroups.com/msg15617.html
+Et ça semble régler le problème.
+Installation de zsh : à faire.
+
 Adafruit_BBIO est sensée être "prête" pour Python3. Sauf que... non.
 Et smbus peut-être, mais c'est pas gagné...
+
+Config de git :
+[user]
+        name = PMK on BBB
+        email = wouf@github.com
+[core]
+        editor = vim
+
+Config de vim : http://vim.wikia.com/wiki/Indenting_source_code
+:syntax on
+:color desert
+:set fileencoding=utf-8
+:set encoding=utf-8
+:set expandtab
+:set shiftwidth=4
+:set softtabstop=4
 
 Lib C GPIO testée : BBIOlib
 

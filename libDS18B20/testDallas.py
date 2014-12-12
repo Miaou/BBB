@@ -40,15 +40,22 @@ if False:
 if True:
     sRoms = set()
     # Fonction qui va être appelée par le module quand on trouve une ROM (oui, le C peut appeler une fonciton Python sans le savoir, c'est assez puissant...)
-    def foundROM(sRoms,ptr):
+    def foundROM(ptr):
         rom = hexlify( c.string_at(ptr, 8) )
         if rom not in sRoms:
             sRoms.add(rom)
             print(rom)
+    callback = c.CFUNCTYPE(None, c.c_void_p)(foundROM)
     # On se donne 10 essais, parce que c'est relou ces bugs perpet
     for i in range(10):
-        if not lib.dallas_rom_search(9, 13, c.CFUNCTYPE(None, c.c_void_p)(
-                                            lambda rom:foundROM(sRoms,rom))):
+        #if not lib.dallas_rom_search(9, 13, c.CFUNCTYPE(None, c.c_void_p)(
+        #                                    lambda rom:foundROM(sRoms,rom))):
+        retCode = lib.dallas_rom_search(9, 13, callback)
+        if retCode == -4:
+            print('No one answered, no device plugged ?')
+            break
+        elif retCode == 0:
+            print('Found in {} tr{}'.format(i+1, 'y' if not i else 'ies'))
             break
     
 
