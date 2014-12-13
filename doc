@@ -7,9 +7,12 @@ Utiliser Internet du Windows raccordé
 - vérifier que la connexion usb n'a pas une config statique (Win a tendance à faire de la merde)
 - route add default gw 192.168.7.1
 - vim /etc/resolv.conf -> nameserver 8.8.8.8 en premier
-- ntpdate pool.ntp.ord pour mettre à jour l'heure
 
-ln -s /usr/share/zoneinfo/Europe/Paris /etc/localtime
+Les problèmes d'heures
+- ntpdate fr.pool.ntp.org pour mettre à jour l'heure
+- ln -s /usr/share/zoneinfo/Europe/Paris /etc/localtime pour le bon fuseau horaire
+- hwclock --systohc permet de définir la clock hardware, et (probablement) avoir moins de décalage au prochain reboot
+- pour plus d'infos : http://derekmolloy.ie/automatically-setting-the-beaglebone-black-time-using-ntp/
 
 Créer un clone pushable (a non-working directory) depuis la distance (sinon il n'y a que des pulls)
 git clone --bare . ../bbb.git
@@ -52,7 +55,7 @@ Config de git :
 
 Config de vim : http://vim.wikia.com/wiki/Indenting_source_code
 :syntax on
-:color desert
+:color darkblue
 :set fileencoding=utf-8
 :set encoding=utf-8
 :set expandtab
