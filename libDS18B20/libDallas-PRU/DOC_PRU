@@ -1,0 +1,69 @@
+Le Programmable Realtime Unit.
+
+Pourquoi le PRU ?
+- on se rapproche du realtime parce que les instructions prennent toutes 5ns (200MHz), sans consommé de temps CPU
+- (attention aux pseudo instructions et accès mémoire qui mettront plus de temps)
+
+Comment on utiliser le PRU ?
+- activer le PRU (au sens du device_tree)
+- écriture du code en assembleur PRU (il existe un compilateur C, mais on perd le contrôle fin du temps (?))
+- compilation de l'assembleur en code binaire
+- écriture d'un loader : code C qui va charger en mémoire le binaire, le mettre à disposition du PRU, et lancer le PRU
+
+Deux aperçus complets de ce procédé (je conseille de les parcourir sans regarder les détails) :
+- http://www.element14.com/community/community/designcenter/single-board-computers/next-gen_beaglebone/blog/2013/05/22/bbb--working-with-the-pru-icssprussv2
+- http://mythopoeic.org/bbb-pru-minimal/
+
+A lire ensuite, mais attention, les infos ne sont pas à jour !
+- http://processors.wiki.ti.com/images/1/18/PRUSS_Training_Slides.pdf
+
+
+Il y a pas mal de doc sur le net, mais il y a aussi pas mal de versions du PRU :
+http://processors.wiki.ti.com/index.php/PRU-ICSS_Feature_Comparison
+
+La BeagleBone Black a un AM3358BZCZ100, de la famille AM335x (source : http://www.adafruit.com/datasheets/BBB_SRM.pdf)
+La doc de processors.wiki.ti est pour la version AM18x du PRU... évidemment.
+Il y a eu des ajouts notables depuis le AM18xx, en particulier l'ajout de l'opération multiplier (c'est la ligne MYC/MAC).
+
+Ceci dit, c'est une bonne intro, surtout :
+- http://processors.wiki.ti.com/index.php/Programmable_Realtime_Unit_Subsystem (les chiffres sont donc faux, mais le principe y est)
+  - http://processors.wiki.ti.com/images/1/18/PRUSS_Training_Slides.pdf
+- Infos sur le AM18xx : http://processors.wiki.ti.com/index.php/Programmable_Realtime_Unit_Software_Development
+  - http://processors.wiki.ti.com/index.php/PRU_Assembly_Instructions donne la visibilité sur les instructions disponibles
+  - (http://processors.wiki.ti.com/index.php/PRU-ICSS)
+
+
+Ce qu'on va utiliser, c'est le package fait par messieurs de BeagleBoard.
+https://github.com/beagleboard/am335x_pru_package
+En particulier, la ref technique du langage assembleur du PRU (c'est pas très pratique à utiliser...) (on retrouve des morceaux dans la doc du microprocesseur principal) :
+https://github.com/beagleboard/am335x_pru_package/blob/master/am335xPruReferenceGuide.pdf
+- la section "5.3.4 PRU Instruction Set" page 55 (on retrouve les infos de http://processors.wiki.ti.com/index.php/PRU_Assembly_Instructions, en moins clair, mais plus à jour)
+- la section "3.1.2 Local Data Memory Map" page 19 permet de voir les adresses importantes
+- la section "5.2.1 Constant Table" page 25 pour la liste des pointeurs constants pré-enregistrés
+- la section "3.2 Global Memory Map" page 20 permet de savoir comment le reste du monde va pouvoir venir chercher les données sur le PRU
+
+Pour aller chercher des détails plus fins :
+- http://www.ti.com/lit/ds/symlink/am3358.pdf : datasheet (on voit que la shared memory est la L3, et le diag p5 n'est donc pas tout à fait juste)
+- http://www.ti.com/lit/ug/spruh73k/spruh73k.pdf : full reference technique (~5000 pages)
+
+Pour des exemples d'utilisations :
+- Attention aux exemples du am335x_pru_package pour la shared memory, c'est fait comme des porcs, cf http://hipstercircuits.com/beaglebone-pru-ddr-memory-access-the-right-way/
+  - il paraît qu'il y a plein de manières de partager des données, mais pas de liste...
+  - on peut par exemple utiliser C31 du PRU pour accéder à la "EMIF0" qui est la mémoire physique de la BBB, sauf que ça nous aide pas beaucoup, puisque Linux est un OS virtuel, donc la valeur d'un pointeur dans un programme C n'est pas l'adresse physique de la variable pointée...
+- Ne pas oublier d'activer la PRU dans le device tree :
+
+Activons le PRU :
+- cf exemple 1 de http://analogdigitallab.org/articles/beaglebone-black-introduction-pru-icss (j'ai réduit le contenu sur mon BBB, évitons de sacrifier un pin et de l'oublier dans le futur)
+- version pas claire et pas juste : "Step 1: Get the PRU system enabled on the BBB board" de http://www.element14.com/community/community/designcenter/single-board-computers/next-gen_beaglebone/blog/2013/05/22/bbb--working-with-the-pru-icssprussv2
+- il faut faire à chaque boot le echo BB-BONE-PRU > /sys/devices/bone_capemgr.9/slots
+
+Utiliser les pins GPIO : aller lire/écrire dans la L4 de l'ARM directement, adressable comme si on y était
+- trouver le registre mémoire qui gère ce pin : lire la colonne mode 7 de http://www.element14.com/community/message/76416/l/re-pinmux--enabling-spi#76416 (par exemple, P9_13 -> gpio0_31)
+- aller à la section "2 ARM Cortex-A8 Memory Map", trouver GPIO0 dans une des tables L4 (la L4_WKUP peripheral map) (pour GPIO0, on obtient la base adresse 0x44E0_7000)
+- aller à la section "25.4.1 GPIO Registers" (page 4871) pour avoir la liste des opérations
+  - si on veut mettre le GPIO en sortie, il faut mettre à 0 le j° bit de GPIO_OE (pour P9_13, il faut donc mettre à 0 le 31° bit de 0x44E0_7134)
+  - si on veut mettre le pin configuré en sortie à 0, il faut mettre à &1<<j le registre GPIO_CLEARDATAOUT (0x190)
+  - (et GPIO_SETDATAOUT (0x194) pour le mettre à 1)
+  - pour lire la valeur, utiliser GPIO_DATAIN (0x138)
+  - GPIO_DATAOUT peut être utilisé pour contrôler la valeur de sortie, mais c'est moins facile qu'avec SET/CLEAR (latence ?)
+
