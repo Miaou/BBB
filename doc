@@ -61,6 +61,7 @@ Config de vim : http://vim.wikia.com/wiki/Indenting_source_code
 :set expandtab
 :set shiftwidth=4
 :set softtabstop=4
+:set autoindent
 
 Lib C GPIO testée : BBIOlib
 
