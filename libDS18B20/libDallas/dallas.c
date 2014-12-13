@@ -339,7 +339,7 @@ LIBDALLAS_API int dallas_rom_search(char port, char pin, SEARCH_CALLBACK found_r
     return do_search(port, pin, 0, 0, found_rom);
 }
 
-LIBDALLAS_API int dallas_skip_rom(char port, char pin, unsigned char operation)
+LIBDALLAS_API int dallas_rom_skip(char port, char pin, unsigned char operation)
 {
     //send a 0xCC
     write_byte(port, pin, SKIP_ROM);
@@ -350,16 +350,27 @@ LIBDALLAS_API int dallas_skip_rom(char port, char pin, unsigned char operation)
     return 0;
 }
 
+LIBDALLAS_API int dallas_rom_match(char port, char pin, unsigned char* rom_code)
+{
+    int i;
+    for(i = 0; i < 8; ++i)
+    {
+        write_byte(port, pin, rom_code[i]);
+    }
+
+    return 0;
+}
+
 //- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 // Function Commands
 //- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-LIBDALLAS_API int dallas_read_scratchpad(char port, char pin, unsigned char *scratch)
+LIBDALLAS_API int dallas_scratchpad_read(char port, char pin, unsigned char *scratch, char num)
 {
     write_byte(port, pin, READ_SCRATCHPAD);
     int i, status;
 
-    for(i = 0; i < 9; ++i)
+    for(i = 0; i < num; ++i)
     {
         status = read_byte(port, pin);
         if(status < 0)
@@ -370,28 +381,7 @@ LIBDALLAS_API int dallas_read_scratchpad(char port, char pin, unsigned char *scr
     return 0;
 }
 
-LIBDALLAS_API int dallas_read_temperature(char port, char pin)
-{
-    write_byte(port, pin, READ_SCRATCHPAD);
-    int i, status, temperature = 0;
-
-    for(i = 0; i < 2; ++i)
-    {
-        status = read_byte(port, pin);
-        if(status < 0)
-            return -1;
-
-        /*We keep all the bits whatever the resolution is.
-        It is user responsibility to remove all undesered bits by reading scratchpad
-        to get resolution(9 to 12 bits)*/
-        temperature += status<<(8*i);
-    } 
-    
-    pulseInit(port, pin);
-    return temperature;
-}
-
-LIBDALLAS_API int dallas_write_scratchpad(char port, char pin, unsigned char *data)
+LIBDALLAS_API int dallas_scratchpad_write(char port, char pin, unsigned char *data)
 {
     int i;
     for(i = 0; i < 3; ++i)
@@ -402,3 +392,25 @@ LIBDALLAS_API int dallas_write_scratchpad(char port, char pin, unsigned char *da
     return 0;
     /*Aucun contrôle possible, ni sur write_byte, ni sur write_bit*/
 }
+
+LIBDALLAS_API int dallas_temperature_read(char port, char pin)
+{
+    write_byte(port, pin, READ_SCRATCHPAD);
+    int i, status, temperature = 0;
+
+    for(i = 0; i < 2; ++i)
+    {
+        status = read_byte(port, pin);
+        if(status < 0)
+            return 0xDEADBEEF;
+
+        /*We keep all the bits whatever the resolution is.
+        It is user responsibility to remove all undesired bits by reading scratchpad
+        to get resolution(9 to 12 bits)*/
+        temperature += status<<(8*i);
+    }
+
+    pulseInit(port, pin);
+    return temperature;
+}
+

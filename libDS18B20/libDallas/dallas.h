@@ -44,12 +44,13 @@ LIBDALLAS_API int read_byte(char port, char pin);
 typedef void (*SEARCH_CALLBACK)(unsigned char *);
 LIBDALLAS_API int dallas_rom_read(char port, char pin, unsigned char *bRom);
 LIBDALLAS_API int dallas_rom_search(char port, char pin, SEARCH_CALLBACK found_rom);
-LIBDALLAS_API int dallas_skip_rom(char port, char pin, unsigned char operation);
+LIBDALLAS_API int dallas_rom_skip(char port, char pin, unsigned char operation);
+LIBDALLAS_API int dallas_rom_match(char port, char pin, unsigned char* rom_code);
 
 /*DS18B20 function commands*/
-LIBDALLAS_API int dallas_write_scratchpad(char port, char pin, unsigned char *data);
-LIBDALLAS_API int dallas_read_scratchpad(char port, char pin, unsigned char *scratch);
-LIBDALLAS_API int dallas_read_temperature(char port, char pin);
+LIBDALLAS_API int dallas_scratchpad_write(char port, char pin, unsigned char *data);
+LIBDALLAS_API int dallas_scratchpad_read(char port, char pin, unsigned char *scratch,char num);
+LIBDALLAS_API int dallas_temperature_read(char port, char pin);
 
 
 #endif

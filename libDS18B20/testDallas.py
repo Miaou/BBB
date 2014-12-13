@@ -3,12 +3,82 @@
 # Du coup, on peut se mettre en Python3...
 # Phase de test, on organisera en classes plus tard...
 
+#La rom contient 64bits, les 8bits LSB sont egaux a 28h
+#les 48 suivants contiennent l'ID unique
+#les 8 derniers sont un crc calcule sur les 56 premiers bits
+
+SEARCH_ROM   =   0xF0
+READ_ROM     =   0x33
+MATCH_ROM    =   0x55
+SKIP_ROM     =   0xCC
+ALARM_SEARCH =   0xEC
+CONVERT_T    =   0x44
+WRITE_SCRATCHPAD =  0x4E
+READ_SCRATCHPAD  =  0xBE
+COPY_SCRATCHPAD  =  0x48
+RECALL_E         =  0xB8
+READ_POWER_SUPPLY = 0xB4
+
 import ctypes as c
 from binascii import hexlify
 
 
 lib = c.cdll.LoadLibrary('./libDallas/libDallas.so')
 lib.dallas_init()
+
+class Sensor :
+#La rom contient 64bits, les 8bits LSB sont egaux a 28h
+#les 48 suivants contiennent l'ID unique
+#les 8 derniers sont un crc calcule sur les 56 premiers bits 
+#pour la commande lib.dallas_match_rom, il faut faire correspondre les 64bits
+    """Represents a sensor on a OneWire pin"""
+    def __init__(self, wire) :
+        self.ID = 0
+        self.resolution = 0
+        self.wire = wire
+       
+    def GetTemperature(self) :
+        lib.pulseInit(self.wire.port, self.wire.pin)
+        lib.dallas_match_rom(self.wire.port, self.wire.pin, self.ID)
+        return lib.dallas_read_temperature()
+
+    def ConvertTemperature(self) :
+        lib.pulseInit(self.wire.port, self.wire.pin)
+        lib.
+class OneWire :
+#Toutes les communications commencent par lib.pulseInit()
+#suivie d'une commande rom lib.dallas_rom_cmd()
+#suivie d'une fonction du capteur lib.write_byte()
+#                           ou    lib.dallas_scratchpad_write/read
+#                           ou    lib.dallas_temperature_read
+#disponible en haut(les fonctions)
+    """Represents a OneWire pin. Can have several sensors on the same
+    wire.
+    Attributes : -port
+                 -pin
+                 -lSensors """
+    def __init__(self, port, pin) :
+        self.port = port
+        self.pin = pin
+        self.lSensors = []
+        lib.dallas_init()
+        lib.pulseInit(port, pin)
+        def foundROM(ptr):
+            sRom = set()
+            rom = c.string_at(ptr, 8)
+            sRom.add(rom)
+            print(hexlify(rom))
+        callback = c.CFUNCTYPE(None, c.c_void_p)(foundROM)
+        for i in range(10):
+            if not lib.dallas_rom_search(port, pin, callback):
+                print("Success reading !!")
+                break
+        
+        #quel est le format de callback??
+
+    def __del__(self) :
+        lib.dallas_free()
+
 
 
 #for i in range(10):
