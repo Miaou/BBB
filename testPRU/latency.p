@@ -49,12 +49,17 @@ LATENCY_SYNC:
     SBBO    r20, r4, 0, 4
     
     //MOV     r0, 0x05F5E100 // 100 000 000 * 10ns -> 1 sec
-    MOV     r0, 0x0100 // Low time.
+    MOV     r0, 0x06000000 // Low time.
   wait_latency_setup:
     // There should be a more "elegant" way with the cycle counter, but still requires 2 instructions in the loop...
     SUB     r0, r0, 1
     QBNE    wait_latency_setup, r0, 0
     
+    // Test foireux des interrupts
+    //QBBC    next, r31.t30
+    //SBBO    r0, r25, 0, 4
+    //HALT
+    //next:
 
     // Now the real deal, reset counter, sets output and waits
     // (counting with an ADD is ineffective because LBBO waits)

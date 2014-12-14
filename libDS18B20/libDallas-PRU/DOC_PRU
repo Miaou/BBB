@@ -67,3 +67,10 @@ Utiliser les pins GPIO : aller lire/écrire dans la L4 de l'ARM directement, adre
   - pour lire la valeur, utiliser GPIO_DATAIN (0x138)
   - GPIO_DATAOUT peut être utilisé pour contrôler la valeur de sortie, mais c'est moins facile qu'avec SET/CLEAR (latence ?)
 
+Les interruptions :
+- pas facile de s'y retrouver juste avec la doc... On apprend ici qu'on aurait du polling : http://events.linuxfoundation.org/sites/events/files/slides/Enhancing%20RT%20Capabilities%20with%20the%20PRU%20final.pdf
+- comme dit le monsieur ici (http://beagleboard.org/static/PumpingStationOne20140628_Real-timeProgrammingWithBeagleBonePRUs.pptx.pdf)
+  - l'interruption va à l'encontre du temps réel
+  - les interruptions dans le PRU sont juste enregistrées dans des registres
+  - (ce qui suppose qu'il faut aller les poller)
+- donc si c'est juste ça, autant se réserver une variable en shared memory et zou...

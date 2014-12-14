@@ -49,6 +49,9 @@ int main(void)
     /* Execute example on PRU */
     printf("\tINFO: Executing example.\r\n");
     prussdrv_exec_program (PRU_NUM, "./latency.bin");
+    
+    //prussdrv_pru_send_event(PRU_EVTOUT_0); // Bizarre d'écrire EVTOUT
+    //prussdrv_pru_clear_event (PRU_EVTOUT_0, PRU0_ARM_INTERRUPT);
 
     /* Wait until PRU_NUM has finished execution */
     printf("\tINFO: Waiting for interrupt.\r\n");
