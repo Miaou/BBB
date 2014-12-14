@@ -104,7 +104,11 @@ int print_shared_mem(void)
     
     // Accessing Shared mem
     lData = (unsigned int *)(pruMem + PRU_SHARED_OFFSET);
-    printf("Latency results:\n -> set: %u cycles\n -> clr: %u cycles\n", lData[0], lData[1]);
+    printf("Latency results:\n -> set: %u cycles\n -> clr: %u cycles (has 2 accesses to host memory)\n", lData[0]+1,
+            lData[1]-(lData[0]+2));
+    printf(" -> consecutive reads: %u cycles (should be 2)\n", lData[2]-lData[1]);
+    printf(" -> consecutive reads: %u cycles (should be last+1)\n", lData[3]-lData[2]);
+    printf(" -> consecutive reads: %u cycles (should be last+1)\n", lData[4]-lData[3]);
     
     // Cleaning after self
     munmap(pruMem, PRUICSS_MEM_SIZE);

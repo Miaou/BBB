@@ -40,3 +40,20 @@ Protocole Stroboscope (but : mesurer la fréquence maximale de rafraichissement
   - SET P9_13, attendre fWait
   - CLEAR P9_13, attendre fWait
   (observer à l'oscillo quand ça devient dégueu)
+
+
+
+
+
+
+---------
+ RESULTS
+---------
+
+- Asserting an GPIO output is set or cleared by reading GPIO_DATAOUT takes around 50ns (4 MHz)
+- Measuring this values gives: ns
+- SBBO to local memory is 2 cycles, LBCO is 4 cycles.
+  Somewhere in the doc (in "7.1.1.1 GPMC Features" of the full technical doc),
+  it is said "Up to 100 MHz external memory clock performance (single device)",
+  so this result is not that bad, assuming xBCO needs to access its configuration registers first.
+- Access times to on-chip memory is very well defined: LBBO LBCO SBBO SBCO should be measured with more care...

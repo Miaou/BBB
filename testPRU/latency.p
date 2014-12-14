@@ -26,7 +26,7 @@ LATENCY_TEST:
     LSL     r25, r1, 8 // R25 now points to the beginning of SHARED_MEMORY
     MOV     r0, RAM_CTRREG_0|CTPPR_0
     MOV     r1, (RAM_CTRREG_0|CONTROL)>>8
-    SBBO    r1, r0, 0, 4 // C28 now points at the CONTROL flags of the PRU0
+    SBBO    r1, r0, 0, 4 // C28 now points at the CONTROL flags of the PRU0. Seems more useful
     
 // Writes to SET/CLEARDATAOUT on P9_13, waits for an answer
 LATENCY_SYNC:
@@ -48,7 +48,8 @@ LATENCY_SYNC:
     SET     r20.t31
     SBBO    r20, r4, 0, 4
     
-    MOV     r0, 0x05F5E100 // 100 000 000 * 10ns -> 1 sec
+    //MOV     r0, 0x05F5E100 // 100 000 000 * 10ns -> 1 sec
+    MOV     r0, 0x0100 // Low time.
   wait_latency_setup:
     // There should be a more "elegant" way with the cycle counter, but still requires 2 instructions in the loop...
     SUB     r0, r0, 1
@@ -63,31 +64,32 @@ LATENCY_SYNC:
     SET     r10.t3
     SBBO    r20, r5, 0, 4     // Sets the GPIO
     SBCO    r10, c28, 0x00, 1 // Cycle count is enabled
-  wait_latency_set_response:
     LBBO    r21, r6, 0, 4     // Reads (and waits)
-    QBBC    wait_latency_set_response, r21.t31 // This is useless ^^
     
-    LBCO    r0, C28, 0x0C, 4 // Reads the cycle count
-    SBBO    r0, r25, 0, 4    // Stores the result in the shared memory
-    CLR     r10.t3
-    SBCO    r10, c28, 0x00, 1 // Cycle count is disabled so that we can reset the cycle value
-
+    LBCO    r0, C28, 0x0C, 4  // Reads the cycle count
+    SBBO    r0, r25, 0, 4     // Stores the result in the shared memory
 
     // The same, with the falling edge.
-    MOV     r0, 0
-    SBCO    r0, c28, 0x0C, 4  // Clears CYCLE count (C28 points to the PRU control flags)
-    SET     r10.t3
     SBBO    r20, r4, 0, 4     // Clears the GPIO
-    SBCO    r10, c28, 0x00, 1 // Cycle count is enabled
-  wait_latency_clr_response:
     LBBO    r21, r6, 0, 4     // Reads (and waits)
-    QBBS    wait_latency_clr_response, r21.t31
     
-    LBCO    r0, C28, 0x0C, 4 // Reads the cycle count
-    SBBO    r0, r25, 4, 4    // Stores the result in the shared memory
-    CLR     r10.t3
-    SBCO    r10, c28, 0x00, 1 // Cycle count is disabled so that we can reset the cycle value
+    LBCO    r0, C28, 0x0C, 4  // Reads the cycle count
+    SBBO    r0, r25, 4, 4     // Stores the result in the shared memory
 
+    // Test Consecutive read to cycle count
+    LBCO    r0, C28, 0x0C, 4
+    SBBO    r0, r25, 8, 4     // Should be +2 since previous
+
+    // Test Consecutive reads to cycle count
+    LBCO    r0, C28, 0x0C, 4
+    LBCO    r0, C28, 0x0C, 4
+    SBBO    r0, r25, 12, 4     // Should be +3 since previous
+    
+    // Test Consecutive reads to cycle count
+    LBCO    r0, C28, 0x0C, 4
+    LBCO    r0, C28, 0x0C, 4
+    LBCO    r0, C28, 0x0C, 4
+    SBBO    r0, r25, 16, 4     // Should be +4 since previous
     
     JMP     QUIT
 
@@ -97,6 +99,13 @@ QUIT:
     LBBO    r10, r2, 0, 4
     SET     r10.t31
     SBBO    r10, r2, 0, 4
+
+    // Disable cycle count and clears it
+    LBCO    r10, c28, 0x00, 1 // Takes lower byte of the CONTROL flag to clear the COUNTER_ENABLE bit
+    CLR     r10.t3
+    SBCO    r10, c28, 0x00, 1 
+    MOV     r0, 0
+    SBCO    r0, c28, 0x0C, 4  // Clears CYCLE count (C28 points to the PRU control flags)
     
     // Send notification to Host for program completion
     MOV     r31.b0, PRU0_ARM_INTERRUPT+16
