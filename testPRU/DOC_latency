@@ -1,0 +1,42 @@
+﻿Tests de latence sur P9_13 et P9_14
+
+P9_13 est gpio0_31, avec GPIO0 en 0x44E07000
+P9_14 est gpio1_18, avec GPIO1 en 0x4804C000
+
+Les offsets :
+#define GPIO_OE            0x0134
+#define GPIO_DATAOUT       0x013C
+#define GPIO_CLEARDATAOUT  0x0190
+#define GPIO_SETDATAOUT    0x0194
+
+Protocole :
+- écrire sur GPIO_OE pour mettre les pins en mode sortie
+- attendre (combien de temps ?)
+- lire DATAOUT et mettre le gpio à 0 si il ne l'est pas (attendre)
+- Pour chaque pin :
+  - écrire SETDATAOUT, attendre en comptant que DATAOUT soit écrit <- devrait donner la latence totale, en x10 nanosecondes
+  - écrire CLEARDATAOUT, attendre en comptant que DATAOUT soit écrit <- devrait donner la latence totale, en x10 nanosecondes
+
+Observons si le temps de clear est aussi long que SET:
+// USELESS
+- écrire CLEARDATAOUT sur P9_13 et P9_14, attendre
+- écrire SETDATAOUT sur P9_13, attendre
+- écrire CLEARDATAOUT sur P9_13
+- écrire SETDATAOUT sur P9_14, attendre, et voir à l'oscillo
+
+Protocole Stroboscope (but : mesurer le temps que met un pin à passer à 1 quand on a mesuré DATAOUT) :
+// Non plus, j'ai l'impression qu'il y moyen, mais pas moyen de faire...
+// Il y a probablement à faire en utilisant un pin en mode GPO et considérer qu'il n'y a pas de latence...
+- remettre à 0 les sorties, attendre
+- lire la période d'attente fWait dans la mémoire partagée
+- faire plein de fois :
+  - SET P9_13, attendre fWait
+  - CLEAR
+  
+Protocole Stroboscope (but : mesurer la fréquence maximale de rafraichissement
+- remettre à 0 les sorties, attendre
+- lire la période d'attente fWait dans la mémoire partagée
+- faire plein de fois :
+  - SET P9_13, attendre fWait
+  - CLEAR P9_13, attendre fWait
+  (observer à l'oscillo quand ça devient dégueu)

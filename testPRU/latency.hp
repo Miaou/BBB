@@ -1,0 +1,74 @@
+// Inspired from https://github.com/beagleboard/am335x_pru_package/blob/master/pru_sw/example_apps/PRU_memAccessPRUDataRam/PRU_memAccessPRUDataRam.hp
+// PAB 2014
+
+// Docs:
+// - AM335x PRU-ICSS Reference Guide (https://github.com/beagleboard/am335x_pru_package/blob/master/am335xPruReferenceGuide.pdf)
+// - AM335x Sitara Processors (complete technical reference) (http://www.ti.com/lit/ug/spruh73k/spruh73k.pdf)
+
+
+#ifndef _latency_HP_
+#define _latency_HP_
+
+
+// We are on a AM335x
+
+
+// Put names on some Constants of the constants table
+//#define CONST_PRUDRAM   C24
+// This one is used to access local data only, and should be offseted before used...
+#define CONST_LOCAL     C28
+// Some mapped memory, shared by who ?
+//#define CONST_L3RAM     C30
+// Access physical DDR, the one that is virtualized and addressed by Linux kernel, so don't touch it !
+//#define CONST_DDR       C31
+
+// CONST_LOCAL offsets (to be used to set CTPPR_0.w0 only) (cf Local Memory Map)
+// Self PRU's RAM (8KB)
+#define RAM_SELF        0x0000
+// Other PRU's RAM (8KB)
+#define RAM_OTHER       0x0020
+// Memory SHARED between PRUs (12KB) (that's the easiest shared memory with outside: for a C program, it is accessible at 0x4A31_0000 (which is the content of /sys/class/uio/uio0/maps/map0/addr) (cf Memory Map of the AM335x))
+#define RAM_BOTH        0x0100
+
+// There are "control registers" for each PRU, some of which may be useful.
+// Base addresses of these registers
+#define RAM_CTRREG_0    0x022000
+#define RAM_CTRREG_1    0x024000
+// Offsets of the registers used to customize constants 24, 25 and 26, 27 respectively (cf Constant Table).
+// (Constant Table Block Index Registers)
+#define CTBIR_0         0x20
+#define CTBIR_1         0x24
+// Offsets of the registers used to customize constants 28, 29 and 30, 31 respectively (cf Constant Table)
+// (Constant Table Programmable Pointer Registers)
+#define CTPPR_0         0x28
+#define CTPPR_1         0x2C
+// Offset of the count CYCLE register
+#define CYCLE           0x0C
+// (the bit 3 of the CONTROL register must be set to enable counting)
+#define CONTROL         0x00
+
+
+// GPIOs in the L4 memory (cf Memory Map of the AM335x)
+#define GPIO0       0x44E07000
+#define GPIO1       0x4804C000
+// With useful registers (cf GPIO Registers of the AM335x techref)
+#define GPIO_OE             0x0134
+#define GPIO_DATAIN         0x0138
+#define GPIO_CLEARDATAOUT   0x0190
+#define GPIO_SETDATAOUT     0x0194
+// Please use this one as readonly.
+#define GPIO_DATAOUT        0x013C
+
+
+// Refer to this mapping in the file - \prussdrv\include\pruss_intc_mapping.h
+#define PRU0_PRU1_INTERRUPT     17
+#define PRU1_PRU0_INTERRUPT     18
+#define PRU0_ARM_INTERRUPT      19
+#define PRU1_ARM_INTERRUPT      20
+#define ARM_PRU0_INTERRUPT      21
+#define ARM_PRU1_INTERRUPT      22
+
+
+
+#endif //_latency_HP_
+
