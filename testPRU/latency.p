@@ -18,20 +18,21 @@ LATENCY_TEST:
 
     // Customize the constant CONST_LOCAL by changing the "block index register"
     // for PRU0 by setting (RAM_CTRREG+CTPPR_0).w0 which maps to c28_pointer[15:0]
-    // This will make C28 point to shared memory. (C29 is set by the way, but we don't care)
-    MOV     r0, RAM_CTRREG|CTBIR_0
-    MOV     r1, RAM_SHARED
+    // This will make C28 point to shared memory. (C29 is set by the way, but we dont care)
+    MOV     r0, RAM_CTRREG_0|CTPPR_0
+    MOV     r1, RAM_BOTH
     SBBO    r1, r0, 0, 4
 
     
 // Writes to SET/CLEARDATAOUT on P9_13, waits for an answer
 LATENCY_SYNC:
-    MOV     r1, GPIO0
-    OR      r2, r1, GPIO_OE
-    OR      r3, r1, GPIO_DATAIN
-    OR      r4, r1, GPIO_CLEARDATAOUT
-    OR      r5, r1, GPIO_SETDATAOUT
-    OR      r6, r1, GPIO_DATAOUT
+    //MOV     r1, GPIO0
+    // It has to be 2 instructions... or serious hacks.
+    MOV     r2, GPIO0 | GPIO_OE
+    MOV     r3, GPIO0 | GPIO_DATAIN
+    MOV     r4, GPIO0 | GPIO_CLEARDATAOUT
+    MOV     r5, GPIO0 | GPIO_SETDATAOUT
+    MOV     r6, GPIO0 | GPIO_DATAOUT
     
     // Clear the bit of GPIO_OE register, to set GPIO as O
     LBBO    r10, r2, 0, 4
@@ -52,10 +53,10 @@ LATENCY_SYNC:
     // Now the real deal, sets output and counts
     SBBO    r20, r5, 0, 4
   wait_latency_set_response:
-    // This should use the cycle counter as Global-Mem IOs can't be 1-cycle long
+    // This should use the cycle counter as Global-Mem IOs cant be 1-cycle long
     ADD     r0, r0, 1
     LBBO    r21, r6, 0, 4
-    QBBC    wait_latency_set_response, r21.31
+    QBBC    wait_latency_set_response, r21.t31
     // Writes the result in Shared Memory
     SBCO    r0, CONST_LOCAL, 0, 4
 
@@ -64,10 +65,10 @@ LATENCY_SYNC:
     MOV     r0, 0
     SBBO    r20, r4, 0, 4
   wait_latency_clr_response:
-    // This should use the cycle counter as Global-Mem IOs can't be 1-cycle long
+    // This should use the cycle counter as Global-Mem IOs cant be 1-cycle long
     ADD     r0, r0, 1
     LBBO    r21, r6, 0, 4
-    QBBS    wait_latency_clr_response, r21.31
+    QBBS    wait_latency_clr_response, r21.t31
     // Writes the result in Shared Memory
     SBCO    r0, CONST_LOCAL, 4, 4
     
@@ -79,5 +80,8 @@ QUIT:
     LBBO    r10, r2, 0, 4
     SET     r10.t31
     SBBO    r10, r2, 0, 4
+    
+    // Send notification to Host for program completion
+    MOV     r31.b0, PRU0_ARM_INTERRUPT+16
     HALT
     

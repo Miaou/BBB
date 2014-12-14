@@ -6,9 +6,9 @@
 #include <stdio.h>
 #include <sys/mman.h>
 #include <fcntl.h>
-/*#include <errno.h>
-#include <unistd.h>
-#include <string.h>*/
+//#include <errno.h>
+#include <unistd.h> // Appears that close is not defined in fcntl on this system........
+//#include <string.h>
 
 // Driver header file
 #include "prussdrv.h"
@@ -51,7 +51,7 @@ int main(void)
     prussdrv_exec_program (PRU_NUM, "./latency.bin");
 
     /* Wait until PRU_NUM has finished execution */
-    printf("\tINFO: Waiting for HALT command.\r\n");
+    printf("\tINFO: Waiting for interrupt.\r\n");
     prussdrv_pru_wait_event (PRU_EVTOUT_0);
     printf("\tINFO: PRU completed transfer (meaning???).\r\n");
     prussdrv_pru_clear_event (PRU_EVTOUT_0, PRU0_ARM_INTERRUPT);
@@ -74,36 +74,37 @@ int main(void)
 int print_shared_mem(void)
 {
     unsigned int *lData; // Of len 2
-    unsigned int i;
+    //unsigned int i;
     FILE *pruDescr;
     int mem_fd;
     void *pruMem;
-    int *pruMemAddr;
+    unsigned int pruMemAddr;
     
     // Finding where PRU-ICSS memory is
     pruDescr = fopen("/sys/class/uio/uio0/maps/map0/addr", "r");
     if(! pruDescr)
         return -1;
     
-    if(fscanf("0x%X", &pruMemAddr) < 1)
+    if(fscanf(pruDescr, "0x%X", &pruMemAddr) < 1)
         return -2;
     fclose(pruDescr);
+    //printf("0x%08X\n", pruMemAddr);
     
     // Mapping PRU memory to access it
-    mem_fd = open("/dev/mem", O_RDONLY);
+    mem_fd = open("/dev/mem", O_RDWR);
     if(mem_fd < 0)
         return -3;
     
     pruMem = mmap(0, PRUICSS_MEM_SIZE, PROT_WRITE | PROT_READ, MAP_SHARED, mem_fd, pruMemAddr);
-    if(! pruMem)
+    if(pruMem == MAP_FAILED)
     {
         close(mem_fd);
         return -4;
     }
     
     // Accessing Shared mem
-    lData = *(unsigned int *)(pruMem + PRU_SHARED_OFFSET);
-    printf("Latency results:\n-> set: %u cycles\n -> clr: %u cycles\n", lData[0], lData[1]);
+    lData = (unsigned int *)(pruMem + PRU_SHARED_OFFSET);
+    printf("Latency results:\n -> set: %u cycles\n -> clr: %u cycles\n", lData[0], lData[1]);
     
     // Cleaning after self
     munmap(pruMem, PRUICSS_MEM_SIZE);
