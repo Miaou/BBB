@@ -20,6 +20,7 @@ print "Shared:  "+'-'.join(hexlify(a) for a in pruicss[SHARED:SHARED+16])
 print "Don't forget to\npruicss.close()\nmem_fd.close()"
 
 MENU = SHARED + 0x20
+CFG = 0x026000
 
 def selectMenu(i,arg):
     """0 is oldest: test sync own measure
@@ -28,4 +29,9 @@ def selectMenu(i,arg):
     pruicss[MENU:MENU+4] = struct.pack('<I', i)
     pruicss[MENU+4:MENU+8] = struct.pack('<I',arg)
 
-print 'selectMenu(0)'
+print 'selectMenu(1,1)'
+
+def pri(off,size):
+    print hexlify(pruicss[off:off+size])
+
+print 'pri(CFG,4)'
