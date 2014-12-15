@@ -114,18 +114,28 @@ LIBDALLAS_API
 int write_bit(char port, char pin, char bit)
 {
     struct timespec tBegins, tEnd;
+    int nNanosec;
     
     iolib_setdir(port, pin, BBBIO_DIR_OUT);
     pin_low(port, pin);
     clock_gettime(CLOCK_REALTIME, &tBegins);
-    WAIT_NANO(tBegins, tEnd, 8000);
+    WAIT_NANO(tBegins, tEnd, 2000);
 
     if(bit&1)
+    {
+        nNanosec = nanodiff(&tBegins, &tEnd);
+        if(nNanosec == 0xDEADBEEF || nNanosec > 15000)
+            return -1;
         iolib_setdir(port, pin, BBBIO_DIR_IN);
+    }
     WAIT_NANO(tBegins, tEnd, 75000);
 
     iolib_setdir(port, pin, BBBIO_DIR_IN);
     WAIT_NANO(tEnd, tBegins, 10000); // Leave it 10 instead of just 1, to be sure !
+    nNanosec = nanodiff(&tBegins, &tEnd);
+    
+    if(nNanosec == 0xDEADBEEF || nNanosec > 120000)
+        return -1;
     
     return 0;
 }
@@ -353,12 +363,13 @@ LIBDALLAS_API int dallas_rom_skip(char port, char pin, unsigned char operation)
 LIBDALLAS_API int dallas_rom_match(char port, char pin, unsigned char* rom_code)
 {
     int i;
-    for(i = 0; i < 8; ++i)
+    int status;
+    for(i = 0, status = 0; i < 8, !status; ++i)
     {
-        write_byte(port, pin, rom_code[i]);
+        status = write_byte(port, pin, rom_code[i]);
     }
 
-    return 0;
+    return status;
 }
 
 //- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -367,36 +378,37 @@ LIBDALLAS_API int dallas_rom_match(char port, char pin, unsigned char* rom_code)
 
 LIBDALLAS_API int dallas_scratchpad_read(char port, char pin, unsigned char *scratch, char num)
 {
-    write_byte(port, pin, READ_SCRATCHPAD);
     int i, status;
+    status = write_byte(port, pin, READ_SCRATCHPAD);
 
-    for(i = 0; i < num; ++i)
+    for(i = 0; i < num && !status; ++i)
     {
         status = read_byte(port, pin);
-        if(status < 0)
-            return -1;
-        scratch[i] = status;
+        scratch[i] = (char)status;
     }
 
-    return 0;
+    return status;
 }
 
 LIBDALLAS_API int dallas_scratchpad_write(char port, char pin, unsigned char *data)
 {
-    int i;
-    for(i = 0; i < 3; ++i)
+    int i, status;
+
+    for(i = 0, status = 0; i < 3 && !status; ++i)
     {
-        write_byte(port, pin, data[i]);
+        status = write_byte(port, pin, data[i]);
     }
     
-    return 0;
-    /*Aucun contrôle possible, ni sur write_byte, ni sur write_bit*/
+    return status;
 }
 
 LIBDALLAS_API int dallas_temperature_read(char port, char pin)
 {
-    write_byte(port, pin, READ_SCRATCHPAD);
     int i, status, temperature = 0;
+    status = write_byte(port, pin, READ_SCRATCHPAD);
+    if(status)
+        return 0xDEADBEEF;
+        //0xB16B00B5
 
     for(i = 0; i < 2; ++i)
     {

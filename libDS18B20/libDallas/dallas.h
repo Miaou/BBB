@@ -49,7 +49,7 @@ LIBDALLAS_API int dallas_rom_match(char port, char pin, unsigned char* rom_code)
 
 /*DS18B20 function commands*/
 LIBDALLAS_API int dallas_scratchpad_write(char port, char pin, unsigned char *data);
-LIBDALLAS_API int dallas_scratchpad_read(char port, char pin, unsigned char *scratch,char num);
+LIBDALLAS_API int dallas_scratchpad_read(char port, char pin, unsigned char *scratch, char num);
 LIBDALLAS_API int dallas_temperature_read(char port, char pin);
 
 

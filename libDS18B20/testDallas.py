@@ -32,18 +32,34 @@ class Sensor :
 #les 8 derniers sont un crc calcule sur les 56 premiers bits 
 #pour la commande lib.dallas_match_rom, il faut faire correspondre les 64bits
     """Represents a sensor on a OneWire pin"""
-    def __init__(self, wire) :
-        self.ID = 0
+    def __init__(self, ID, wire) :
+        self.ID = ID
         self.resolution = 0
         self.wire = wire
-       
+    
+    def checkID(ID) :
+        #implementation du CRC
+        poly = 0x8C
+        s = 0
+        for by in list(ID):
+            for i in range(8):
+                r =  (s&0x01)
+                f = (by&0x01)
+                by >>= 1
+                xor = poly if (r^f) else 0
+                s = ((s>>1) ^ xor)&0xFF
+        return s==0
+        
+
     def GetTemperature(self) :
         lib.pulseInit(self.wire.port, self.wire.pin)
-        lib.dallas_match_rom(self.wire.port, self.wire.pin, self.ID)
-        return lib.dallas_read_temperature()
+        cBuf = c.create_string_buffer(self.ID)
+        a = lib.dallas_rom_match(self.wire.port, self.wire.pin, c.byref(cBuf))
+        return a, lib.dallas_temperature_read(self.wire.port, self.wire.pin)
 
     def ConvertTemperature(self) :
         lib.pulseInit(self.wire.port, self.wire.pin)
+        print('Manque un rom_match ici')
         lib.write_byte(self.wire.port, self.wire.pin, CONVERT_T)
         #must enable strong pullup
 
@@ -64,26 +80,30 @@ class OneWire :
         self.pin = pin
         self.lSensors = []
         lib.dallas_init()
-        lib.pulseInit(port, pin)
+        #lib.pulseInit(port, pin)
+        sRoms = set()
         def foundROM(ptr):
-            sRom = set()
             rom = c.string_at(ptr, 8)
-            sRom.add(rom)
+            sRoms.add(rom)
             print(hexlify(rom))
         callback = c.CFUNCTYPE(None, c.c_void_p)(foundROM)
         for i in range(10):
             if not lib.dallas_rom_search(port, pin, callback):
-                print("Success reading !!")
+                print("Success, {} reading{}!!".format(i, 's' if i!=1 else ''))
                 break
         
         #quel est le format de callback??
         #mauvaise question, comment identifier les bons IDs 64bits des faux?
-    def __del__(self) :
-        lib.dallas_free()
+        for rom in sRoms:
+            if Sensor.checkID(rom):
+                self.lSensors.append(Sensor(rom, self))
+
+    #def __del__(self) :
+    #    lib.dallas_free()
 
     def AllConvertTemperature(self) :
         lib.pulseInit(self.port, self.pin)
-        lib.dallas_rom_skip(self.port, self.pin, CONVERT_T)
+        return lib.dallas_rom_skip(self.port, self.pin, CONVERT_T)
         #must enable strong pullup
 
 
@@ -115,14 +135,14 @@ if False:
     print(n)
 
 # Test search rom
-if True:
+if False:
     sRoms = set()
     # Fonction qui va être appelée par le module quand on trouve une ROM (oui, le C peut appeler une fonciton Python sans le savoir, c'est assez puissant...)
     def foundROM(ptr):
-        rom = hexlify( c.string_at(ptr, 8) )
+        rom = c.string_at(ptr, 8)
         if rom not in sRoms:
             sRoms.add(rom)
-            print(rom)
+            print(hexlify(rom))
     callback = c.CFUNCTYPE(None, c.c_void_p)(foundROM)
     # On se donne 10 essais, parce que c'est relou ces bugs perpet
     for i in range(10):
@@ -135,8 +155,13 @@ if True:
         elif retCode == 0:
             print('Found in {} tr{}'.format(i+1, 'y' if not i else 'ies'))
             break
-    
 
 
-lib.dallas_free()
+if True:
+    wire = OneWire(9,13)
+    wire.AllConvertTemperature()
+    buf = (c.c_byte*9)()
+    #lib.dallas_rom_match(wire.port, wire.pin, c.byref(buf), 9)
+
+#lib.dallas_free()
 
