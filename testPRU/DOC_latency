@@ -50,10 +50,19 @@ Protocole Stroboscope (but : mesurer la fréquence maximale de rafraichissement
  RESULTS
 ---------
 
-- Asserting an GPIO output is set or cleared by reading GPIO_DATAOUT takes around 50ns (4 MHz)
-- Measuring this values gives: ns
+- Asserting a GPIO output is set or cleared by reading GPIO_DATAOUT takes around 50ns (4 MHz)
 - SBBO to local memory is 2 cycles, LBCO is 4 cycles.
   Somewhere in the doc (in "7.1.1.1 GPMC Features" of the full technical doc),
   it is said "Up to 100 MHz external memory clock performance (single device)",
   so this result is not that bad, assuming xBCO needs to access its configuration registers first.
 - Access times to on-chip memory is very well defined: LBBO LBCO SBBO SBCO should be measured with more care...
+- Now with the digital oscilloscope (cf latence1-x.png where x is the "waiting" time):
+  The goal is to SET the GPIO (through slow L4 memory), wait x time, CLEAR the GPIO, wait x, SET, wait x, CLEAR, LOOP.
+  So there are 2 SET-wait-CLEAR-wait per iteration of the loop. So we can see the time taken to read the shared memory...
+  Signal is "clean" when asking 2µs delay. Not so much 250kHz...
+  Signal is "clean" when asking 0.980µs, almost exactly 500kHZ on 2 periods.
+   -> time taken to access mem is 40ns, which was given by the previous experiment.
+  Signal is not clean for 180ns. Is that the measure? It was not cleaner putting a 10kOhm resistor between GND and GPIO...
+  Signal is barely a signal for 10ns... And the period is 80ns instead of 10ns (sync with L4 writes, again)
+- So, what would look like a 5ns signal in direct mode? I don't trust the oscilloscope enough to try it...
+

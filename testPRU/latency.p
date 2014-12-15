@@ -49,18 +49,21 @@ LATENCY_SYNC:
     SBBO    r20, r4, 0, 4
     
     //MOV     r0, 0x05F5E100 // 100 000 000 * 10ns -> 1 sec
-    MOV     r0, 0x06000000 // Low time.
+    MOV     r0, 0x00000100 // Low time.
   wait_latency_setup:
     // There should be a more "elegant" way with the cycle counter, but still requires 2 instructions in the loop...
     SUB     r0, r0, 1
     QBNE    wait_latency_setup, r0, 0
     
-    // Test foireux des interrupts
-    //QBBC    next, r31.t30
-    //SBBO    r0, r25, 0, 4
-    //HALT
-    //next:
+    // Switch menu
+    LBBO    r0, r25, 0x20, 4
+    QBEQ    OLDEST, r0, 0
+    SUB     r0, r0, 1
+    QBEQ    WAITER, r0, 0
+    // default:
+    JMP     QUIT
 
+OLDEST:
     // Now the real deal, reset counter, sets output and waits
     // (counting with an ADD is ineffective because LBBO waits)
     MOV     r0, 0
@@ -72,31 +75,63 @@ LATENCY_SYNC:
     LBBO    r21, r6, 0, 4     // Reads (and waits)
     
     LBCO    r0, C28, 0x0C, 4  // Reads the cycle count
-    SBBO    r0, r25, 0, 4     // Stores the result in the shared memory
+    SBBO    r0, r25, 0x00, 4  // Stores the result in the shared memory
 
     // The same, with the falling edge.
     SBBO    r20, r4, 0, 4     // Clears the GPIO
     LBBO    r21, r6, 0, 4     // Reads (and waits)
     
     LBCO    r0, C28, 0x0C, 4  // Reads the cycle count
-    SBBO    r0, r25, 4, 4     // Stores the result in the shared memory
+    SBBO    r0, r25, 0x04, 4  // Stores the result in the shared memory
 
     // Test Consecutive read to cycle count
     LBCO    r0, C28, 0x0C, 4
-    SBBO    r0, r25, 8, 4     // Should be +2 since previous
+    SBBO    r0, r25, 0x08, 4  // Should be +2 since previous
 
     // Test Consecutive reads to cycle count
     LBCO    r0, C28, 0x0C, 4
     LBCO    r0, C28, 0x0C, 4
-    SBBO    r0, r25, 12, 4     // Should be +3 since previous
+    SBBO    r0, r25, 0x0C, 4  // Should be +3 since previous
     
     // Test Consecutive reads to cycle count
     LBCO    r0, C28, 0x0C, 4
     LBCO    r0, C28, 0x0C, 4
     LBCO    r0, C28, 0x0C, 4
-    SBBO    r0, r25, 16, 4     // Should be +4 since previous
+    SBBO    r0, r25, 0x10, 4  // Should be +4 since previous
     
     JMP     QUIT
+
+
+WAITER:
+    LBBO    r11, r25, 0x20, 8   // bContinue and wait period
+    //SBBO    r12, r25, 0x00, 4
+    QBNE    QUIT, r11, 1
+    MOV     r13, r12
+    MOV     r14, r12
+    MOV     r15, r12
+
+    SBBO    r20, r5, 0, 4   // Sets
+  waiter_wait_0:
+    SUB     r12, r12, 1
+    QBNE    waiter_wait_0, r12, 0
+
+    SBBO    r20, r4, 0, 4   // Clears
+  waiter_wait_1:
+    SUB     r13, r13, 1
+    QBNE    waiter_wait_1, r13, 0
+
+    SBBO    r20, r5, 0, 4   // Sets
+  waiter_wait_2:
+    SUB     r14, r14, 1
+    QBNE    waiter_wait_2, r14, 0
+
+    SBBO    r20, r4, 0, 4   // Clears
+  waiter_wait_3:
+    SUB     r15, r15, 1
+    QBNE    waiter_wait_3, r15, 0
+
+    JMP     WAITER
+
 
 // Cleans after you
 QUIT:
