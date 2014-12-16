@@ -1,0 +1,11 @@
+0x10 : Global enable
+0x300 : Syst Interrupt Enable Set 0-31 -> 17 à 23 activés
+0x380 : Syst Interrupt Clea Set : idem. Utiliser le précédent pour activer les bons interrupts
+0x410 : Channel map
+0x414 : Channel map
+0x800 : Host interrupt map : 0 map à 0, 1 à 1, 2 à 2, 3 à 3
+-> 0xD00 : Syst Interrupt Polarity de  0 à 31 est à FFFF_FFFF au lieu de 01 ! (devrait ptetre pas)
+-> 0xD04 : Syst Interrupt Polarity de 32 à 63 aussi !
+0x1500 : Host Interrupt Enable est suggéré à 0, est activé pour 0->3 (pas pour 4->9)
+
+-> Mettre la syst polarity à 0 permet au PRU de finir son cours et de raise son interruption host... Mais il faut le faire à chaque fois.

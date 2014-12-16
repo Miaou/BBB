@@ -1,4 +1,4 @@
-#
+#!/usr/bin/python3
 # Parce que je debug...
 
 import mmap
@@ -14,10 +14,10 @@ pruicss = mmap.mmap(mem_fd.fileno(), 0x080000, offset=addr)
 
 SHARED  = 0x010000
 CONTROL = 0x022000
-print "Control: "+'-'.join(hexlify(a) for a in pruicss[CONTROL:CONTROL+8])
-print "Shared:  "+'-'.join(hexlify(a) for a in pruicss[SHARED:SHARED+16])
+print("Control: "+'-'.join('{:02x}'.format(a) for a in pruicss[CONTROL:CONTROL+8]))
+print("Shared:  "+'-'.join('{:02x}'.format(a) for a in pruicss[SHARED:SHARED+16]))
 
-print "Don't forget to\npruicss.close()\nmem_fd.close()"
+print("Don't forget to\npruicss.close()\nmem_fd.close()")
 
 MENU = SHARED + 0x20
 CFG = 0x026000
@@ -29,9 +29,9 @@ def selectMenu(i,arg):
     pruicss[MENU:MENU+4] = struct.pack('<I', i)
     pruicss[MENU+4:MENU+8] = struct.pack('<I',arg)
 
-print 'selectMenu(1,1)'
+print('selectMenu(1,1)')
 
 def pri(off,size):
-    print hexlify(pruicss[off:off+size])
+    print(hexlify(pruicss[off:off+size]))
 
-print 'pri(CFG,4)'
+print('pri(CFG,4)')
