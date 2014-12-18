@@ -83,20 +83,25 @@ int nanodiff(struct timespec *t0, struct timespec *t1)
 //  waits 15 to 60µs (signals is pulled back up),
 //  a slave should then put the pin to low for 60 to 240µs,
 //  master should stay in receive mode until 480µs has been spent since entering receive mode
-LIBDALLAS_API int pulseInit(char port, char pin)
+LIBDALLAS_API int pulseInit(OneWire* onewire)
 {
     struct timespec tBegins, tSwitch, tEnd;
     char bPresence;//, bPresenceTested; // (remember, bool does not exist in C ^^)
 
-    iolib_setdir(port, pin, BBBIO_DIR_OUT);
-    pin_low(port, pin); // This takes ~0.25µs
+    iolib_setdir(onewire->pullup_port, onewire->pullup_pin, BBIO_DIR_OUT); //Each transaction begins with a pulse
+    //so we set the pullup to out here for every transaction
+    //pullup is handling a mosfet, not a direct pullup.
+    pin_high(onewire->pullup_port, onewire_pullup_pin);
+
+    iolib_setdir(onewire->port, onewire->pin, BBBIO_DIR_OUT);
+    pin_low(onewire->port, onewire->pin); // This takes ~0.25µs
     clock_gettime(CLOCK_REALTIME, &tBegins); // This takes ~2µs (the first calls are always longer)
     WAIT_NANO(tBegins, tSwitch, 480000);
 
-    iolib_setdir(port, pin, BBBIO_DIR_IN); // This takes ~0.5µs
+    iolib_setdir(onewire->port, onewire->pin, BBBIO_DIR_IN); // This takes ~0.5µs
     WAIT_NANO(tSwitch, tEnd, 67000);
-    pin_low(port, pin);
-    bPresence = is_low(port, pin); // This takes ~0µs
+    pin_low(onewire->port, onewire->pin);
+    bPresence = is_low(onewire->port, onewire->pin); // This takes ~0µs
     WAIT_NANO(tSwitch, tEnd, 480000);
 
     return bPresence;
@@ -111,13 +116,13 @@ LIBDALLAS_API int pulseInit(char port, char pin)
 // The time  before next written bit (> 1µs) is waited here (master must be released)
 // (for debug purposes, it is in the API, but it should not)
 LIBDALLAS_API
-int write_bit(char port, char pin, char bit)
+int write_bit(OneWire* onewire, char bit)
 {
     struct timespec tBegins, tEnd;
     int nNanosec;
-    
-    iolib_setdir(port, pin, BBBIO_DIR_OUT);
-    pin_low(port, pin);
+
+    iolib_setdir(onewire->port, onewire->pin, BBBIO_DIR_OUT);
+    pin_low(onewire->port, onewire->pin);
     clock_gettime(CLOCK_REALTIME, &tBegins);
     WAIT_NANO(tBegins, tEnd, 2000);
 
@@ -126,17 +131,17 @@ int write_bit(char port, char pin, char bit)
         nNanosec = nanodiff(&tBegins, &tEnd);
         if(nNanosec == 0xDEADBEEF || nNanosec > 15000)
             return -1;
-        iolib_setdir(port, pin, BBBIO_DIR_IN);
+        iolib_setdir(onewire->port, onewire->pin, BBBIO_DIR_IN);
     }
     WAIT_NANO(tBegins, tEnd, 75000);
 
-    iolib_setdir(port, pin, BBBIO_DIR_IN);
+    iolib_setdir(onewire->port, onewire->pin, BBBIO_DIR_IN);
     WAIT_NANO(tEnd, tBegins, 10000); // Leave it 10 instead of just 1, to be sure !
     nNanosec = nanodiff(&tBegins, &tEnd);
-    
+
     if(nNanosec == 0xDEADBEEF || nNanosec > 120000)
         return -1;
-    
+
     return 0;
 }
 
@@ -149,29 +154,29 @@ int write_bit(char port, char pin, char bit)
 //  wait at least 1µs before next read slot
 // Function may return -1 if read is not done within 15µs
 LIBDALLAS_API
-int read_bit(char port, char pin)
+int read_bit(OneWire* onewire)
 {
     struct timespec tBegins, tEnd;
     char bBit;
     int nNanosec;
-    
+
     // Taking the reference time is difficult: all these function take time ~µs
     //  and the waited time IS critical... Little margins.
-    pin_low(port, pin); // I hope this is effective when pin is in BBBIO_DIR_IN mode
+    pin_low(onewire->port, onewire->pin); // I hope this is effective when pin is in BBBIO_DIR_IN mode
     clock_gettime(CLOCK_REALTIME, &tBegins);
-    iolib_setdir(port, pin, BBBIO_DIR_OUT); // Considered <1µs
+    iolib_setdir(onewire->port, onewire->pin, BBBIO_DIR_OUT); // Considered <1µs
     WAIT_NANO(tBegins, tEnd, 2000); // Will be more than 1µs
-    iolib_setdir(port, pin, BBBIO_DIR_IN);
+    iolib_setdir(onewire->port, onewire->pin, BBBIO_DIR_IN);
     // We have 15µs to read the value, the later the better.
     //  Raise the value if CRCs are invalid
     //  Lower the value if read_bit returns -1 too easily
-    //   (beware, because of something unknow, 
+    //   (beware, because of something unknow,
     //   you can't hope for miracles, and sometimes something takes around 1ms...)
     //   Interesting fact, changing overall length of the read slot affects greatly
     //   the false negative. For now, having 60000 -> 75% success, 63000 -> 95% success.
     //   THIS IS F*CK*D UP
     WAIT_NANO(tBegins, tEnd, 8000);
-    bBit = is_high(port, pin);
+    bBit = is_high(onewire->port, onewire->pin);
 
     // Now we check that the 15µs window was not exceeded
     //  Because clock_gettime takes some time, we could conclude to a false negative...
@@ -193,18 +198,18 @@ int read_bit(char port, char pin)
 // Bytes are written/read with least significant bit first.
 //- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-LIBDALLAS_API int write_byte(char port, char pin, unsigned char by)
+LIBDALLAS_API int write_byte(OneWire* onewire, unsigned char by)
 {
     char i;
     int status = 0;
-    
+
     for(i=0; i<8 && !status; ++i)
-        status = write_bit(port, pin, (by>>i));
+        status = write_bit(onewire->port, onewire->pin, (by>>i));
 
     return status;
 }
 
-LIBDALLAS_API int read_byte(char port, char pin)
+LIBDALLAS_API int read_byte(OneWire* onewire)
 {
     char i;
     int status = 0;
@@ -212,7 +217,7 @@ LIBDALLAS_API int read_byte(char port, char pin)
 
     for(i=0; i<8; ++i)
     {
-        status = read_bit(port, pin);
+        status = read_bit(onewire->port, onewire->pin);
         if(status<0)
             return -1;
         byte |= (status<<i);
@@ -234,25 +239,25 @@ LIBDALLAS_API int read_byte(char port, char pin)
 //- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 // How do you avoid overflows in this case ???
-LIBDALLAS_API int dallas_rom_read(char port, char pin, unsigned char *bRom)
+LIBDALLAS_API int dallas_rom_read(OneWire* onewire, unsigned char *bRom)
 {
     //unsigned char bRom[8];
     int i, status;
 
-    if(! pulseInit(port, pin) || ! bRom)
+    if(! pulseInit(onewire->port, onewire->pin) || ! bRom)
         return -1;
-    
+
     // Send a 0x33
-    write_byte(port, pin, READ_ROM);
+    write_byte(onewire->port, onewire->pin, READ_ROM);
     // Reads the 8 bytes
     for(i=0; i<8; ++i)
     {
-        status = read_byte(port, pin);
+        status = read_byte(onewire->port, onewire->pin);
         if(status < 0)
             return -1;
         bRom[i] = status;
     }
-    
+
     return 0;
 }
 
@@ -261,25 +266,25 @@ LIBDALLAS_API int dallas_rom_read(char port, char pin, unsigned char *bRom)
 // Does the search from bit number iFrom.
 //  If bRedo, resends the validated sequence contained in static bRom until bit iFrom,
 //  then continues the search.
-int do_search(char port, char pin, unsigned char iFrom, char bRedo, SEARCH_CALLBACK found_rom)
+static int do_search(OneWire* onewire, unsigned char iFrom, char bRedo, SEARCH_CALLBACK found_rom)
 {
     // Least significant bit firts, least significant byte first (little endian)
     static unsigned char bRom[8];
     int i, status;
     unsigned char bit0, bit1;
-    
-    
+
+
     if(iFrom > 63)
         return -5;
 
     if(bRedo || iFrom==0)
     {
-        if(! pulseInit(port, pin))
+        if(! pulseInit(onewire->port, onewire->pin))
             return -1;
         // Sends a 0xF0
-        write_byte(port, pin, SEARCH_ROM);
+        write_byte(onewire->port, onewire->pin, SEARCH_ROM);
     }
-    
+
     if(bRedo)
     {
         for(i=0; i<iFrom; ++i)
@@ -287,18 +292,18 @@ int do_search(char port, char pin, unsigned char iFrom, char bRedo, SEARCH_CALLB
             // This is me following a route. Don't check if read is successful: we don't care.
             // If it was a true fail, we will have no response later, and it will be filtered...
             // Otherwise, it was a false negative, and we are glad to pursue...
-            read_bit(port, pin);
-            read_bit(port, pin);
-            write_bit(port, pin, (bRom[i/8]>>(i%8)));
+            read_bit(onewire->port, onewire->pin);
+            read_bit(onewire->port, onewire->pin);
+            write_bit(onewire->port, onewire->pin, (bRom[i/8]>>(i%8)));
         }
     }
     for(i=iFrom; i<64; ++i)
     {
-        status = read_bit(port, pin);
+        status = read_bit(onewire->port, onewire->pin);
         if(status < 0)
             return -2;
         bit0 = status;
-        status = read_bit(port, pin);
+        status = read_bit(onewire->port, onewire->pin);
         if(status < 0)
             return -3;
         bit1 = status;
@@ -307,25 +312,25 @@ int do_search(char port, char pin, unsigned char iFrom, char bRedo, SEARCH_CALLB
         {
             // All devices have a 0, so we select them all
             bRom[i/8] &= ~(1<<(i%8));
-            write_bit(port, pin, 0);
+            write_bit(onewire->port, onewire->pin, 0);
         }
         else if(bit0 && !bit1)
         {
             // All devices have a 1, so we select them all
             bRom[i/8] |= (1<<(i%8));
-            write_bit(port, pin, 1);
+            write_bit(onewire->port, onewire->pin, 1);
         }
         else if(!bit0 && !bit1)
         {
             // Both 0 and 1 are found. Our path must be split.
             // First, we continue the branch were a 0 is at rank i
             bRom[i/8] &= ~(1<<(i%8));
-            write_bit(port, pin, 0); // A write must follow each couple of reads
+            write_bit(onewire->port, onewire->pin, 0); // A write must follow each couple of reads
             status  = 0;
-            status |= do_search(port, pin, i+1, 0, found_rom);
+            status |= do_search(onewire->port, onewire->pin, i+1, 0, found_rom);
             // Then, we redo the first part, use a 1 at rank i, and finish the branch
             bRom[i/8] |= (1<<(i%8));
-            status |= do_search(port, pin, i+1, 1, found_rom);
+            status |= do_search(onewire->port, onewire->pin, i+1, 1, found_rom);
             // If status < 0, something went wrong, the results may be partial only.
             return (! status) ? 0 : -6;
         }
@@ -344,29 +349,38 @@ int do_search(char port, char pin, unsigned char iFrom, char bRedo, SEARCH_CALLB
 }
 
 
-LIBDALLAS_API int dallas_rom_search(char port, char pin, SEARCH_CALLBACK found_rom)
+LIBDALLAS_API int dallas_rom_search(OneWire* onewire, SEARCH_CALLBACK found_rom)
 {
-    return do_search(port, pin, 0, 0, found_rom);
+    return do_search(onewire->port, onewire->pin, 0, 0, found_rom);
 }
 
-LIBDALLAS_API int dallas_rom_skip(char port, char pin, unsigned char operation)
+LIBDALLAS_API int dallas_rom_skip(OneWire* onewire, unsigned char operation)
 {
     //send a 0xCC
-    write_byte(port, pin, SKIP_ROM);
-    write_byte(port, pin, operation);
-    if(operation == CONVERT_T || operation == COPY_SCRATCHPAD);
-    //need a strong pullup over here for these 2 operations, cf doc
-    //during at least 10ms 
+    write_byte(onewire->port, onewire->pin, SKIP_ROM);
+    write_byte(onewire->port, onewire->pin, operation);
+
+    if(operation == CONVERT_T || operation == COPY_SCRATCHPAD) //User be careful about pullup
+    {
+        struct timespec tBegins, tEnd;
+        pin_low(onewire->pullup_port, onewire->pullup_pin);
+        WAIT_NANO(tBegins, tEnd, 750000000); /*Blocking here or risk user destroy the BBB?
+        waiting tconv for conversion or 10ms for copying scratchpad
+        1.5mA current
+        scheme is on page 3 of documentation*/
+        pin_high(onewire->pullup_port, onewire->pullup_pin);
+    }
+
     return 0;
 }
 
-LIBDALLAS_API int dallas_rom_match(char port, char pin, unsigned char* rom_code)
+LIBDALLAS_API int dallas_rom_match(OneWire* onewire, unsigned char* rom_code)
 {
     int i;
     int status;
     for(i = 0, status = 0; i < 8, !status; ++i)
     {
-        status = write_byte(port, pin, rom_code[i]);
+        status = write_byte(onewire->port, onewire->pin, rom_code[i]);
     }
 
     return status;
@@ -376,53 +390,54 @@ LIBDALLAS_API int dallas_rom_match(char port, char pin, unsigned char* rom_code)
 // Function Commands
 //- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-LIBDALLAS_API int dallas_scratchpad_read(char port, char pin, unsigned char *scratch, char num)
+LIBDALLAS_API int dallas_scratchpad_read(OneWire* onewire, unsigned char *scratch, char num)
 {
     int i, status;
-    status = write_byte(port, pin, READ_SCRATCHPAD);
+    status = write_byte(onewire->port, onewire->pin, READ_SCRATCHPAD);
 
     for(i = 0; i < num && !status; ++i)
     {
-        status = read_byte(port, pin);
+        status = read_byte(onewire->port, onewire->pin);
         scratch[i] = (char)status;
     }
 
     return status;
 }
 
-LIBDALLAS_API int dallas_scratchpad_write(char port, char pin, unsigned char *data)
+LIBDALLAS_API int dallas_scratchpad_write(OneWire* onewire, unsigned char *data)
 {
     int i, status;
 
     for(i = 0, status = 0; i < 3 && !status; ++i)
     {
-        status = write_byte(port, pin, data[i]);
+        status = write_byte(onewire->port, pin, data[i]);
     }
-    
+
     return status;
 }
 
-LIBDALLAS_API int dallas_temperature_read(char port, char pin)
+LIBDALLAS_API int dallas_temperature_read(OneWire* onewire)
 {
     int i, status, temperature = 0;
-    status = write_byte(port, pin, READ_SCRATCHPAD);
+    status = write_byte(onewire->port, onewire->pin, READ_SCRATCHPAD);
     if(status)
         return 0xDEADBEEF;
         //0xB16B00B5
 
     for(i = 0; i < 2; ++i)
     {
-        status = read_byte(port, pin);
+        status = read_byte(onewire->port, onewire->pin);
         if(status < 0)
             return 0xDEADBEEF;
 
         /*We keep all the bits whatever the resolution is.
         It is user responsibility to remove all undesired bits by reading scratchpad
-        to get resolution(9 to 12 bits)*/
+        to get resolution(9 to 12 bits), LSB are undefined for 9-10-11 bits resolution
+        the 4 MSB contains the sign S, positive(0) or negative(1)*/
         temperature += status<<(8*i);
     }
 
-    pulseInit(port, pin);
+    pulseInit(onewire->port, onewire->pin);
     return temperature;
 }
 
