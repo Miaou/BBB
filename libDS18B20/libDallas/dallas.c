@@ -88,10 +88,10 @@ LIBDALLAS_API int pulseInit(OneWire* onewire)
     struct timespec tBegins, tSwitch, tEnd;
     char bPresence;//, bPresenceTested; // (remember, bool does not exist in C ^^)
 
-    iolib_setdir(onewire->pullup_port, onewire->pullup_pin, BBIO_DIR_OUT); //Each transaction begins with a pulse
+    iolib_setdir(onewire->pullup_port, onewire->pullup_pin, BBBIO_DIR_OUT); //Each transaction begins with a pulse
     //so we set the pullup to out here for every transaction
     //pullup is handling a mosfet, not a direct pullup.
-    pin_high(onewire->pullup_port, onewire_pullup_pin);
+    pin_high(onewire->pullup_port, onewire->pullup_pin);
 
     iolib_setdir(onewire->port, onewire->pin, BBBIO_DIR_OUT);
     pin_low(onewire->port, onewire->pin); // This takes ~0.25µs
@@ -377,8 +377,8 @@ LIBDALLAS_API int dallas_rom_skip(OneWire* onewire, unsigned char operation)
 LIBDALLAS_API int dallas_rom_match(OneWire* onewire, unsigned char* rom_code)
 {
     int i;
-    int status;
-    for(i = 0, status = 0; i < 8, !status; ++i)
+    int status = 0;
+    for(i = 0, status = 0; i < 8 && !status; ++i)
     {
         status = write_byte(onewire, rom_code[i]);
     }
