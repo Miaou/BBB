@@ -204,7 +204,7 @@ LIBDALLAS_API int write_byte(OneWire* onewire, unsigned char by)
     int status = 0;
 
     for(i=0; i<8 && !status; ++i)
-        status = write_bit(onewire->port, onewire->pin, (by>>i));
+        status = write_bit(onewire, (by>>i));
 
     return status;
 }
@@ -217,7 +217,7 @@ LIBDALLAS_API int read_byte(OneWire* onewire)
 
     for(i=0; i<8; ++i)
     {
-        status = read_bit(onewire->port, onewire->pin);
+        status = read_bit(onewire);
         if(status<0)
             return -1;
         byte |= (status<<i);
@@ -244,15 +244,15 @@ LIBDALLAS_API int dallas_rom_read(OneWire* onewire, unsigned char *bRom)
     //unsigned char bRom[8];
     int i, status;
 
-    if(! pulseInit(onewire->port, onewire->pin) || ! bRom)
+    if(! pulseInit(onewire) || ! bRom)
         return -1;
 
     // Send a 0x33
-    write_byte(onewire->port, onewire->pin, READ_ROM);
+    write_byte(onewire, READ_ROM);
     // Reads the 8 bytes
     for(i=0; i<8; ++i)
     {
-        status = read_byte(onewire->port, onewire->pin);
+        status = read_byte(onewire);
         if(status < 0)
             return -1;
         bRom[i] = status;
@@ -279,10 +279,10 @@ static int do_search(OneWire* onewire, unsigned char iFrom, char bRedo, SEARCH_C
 
     if(bRedo || iFrom==0)
     {
-        if(! pulseInit(onewire->port, onewire->pin))
+        if(! pulseInit(onewire))
             return -1;
         // Sends a 0xF0
-        write_byte(onewire->port, onewire->pin, SEARCH_ROM);
+        write_byte(onewire, SEARCH_ROM);
     }
 
     if(bRedo)
@@ -292,18 +292,18 @@ static int do_search(OneWire* onewire, unsigned char iFrom, char bRedo, SEARCH_C
             // This is me following a route. Don't check if read is successful: we don't care.
             // If it was a true fail, we will have no response later, and it will be filtered...
             // Otherwise, it was a false negative, and we are glad to pursue...
-            read_bit(onewire->port, onewire->pin);
-            read_bit(onewire->port, onewire->pin);
-            write_bit(onewire->port, onewire->pin, (bRom[i/8]>>(i%8)));
+            read_bit(onewire);
+            read_bit(onewire);
+            write_bit(onewire, (bRom[i/8]>>(i%8)));
         }
     }
     for(i=iFrom; i<64; ++i)
     {
-        status = read_bit(onewire->port, onewire->pin);
+        status = read_bit(onewire);
         if(status < 0)
             return -2;
         bit0 = status;
-        status = read_bit(onewire->port, onewire->pin);
+        status = read_bit(onewire);
         if(status < 0)
             return -3;
         bit1 = status;
@@ -312,25 +312,25 @@ static int do_search(OneWire* onewire, unsigned char iFrom, char bRedo, SEARCH_C
         {
             // All devices have a 0, so we select them all
             bRom[i/8] &= ~(1<<(i%8));
-            write_bit(onewire->port, onewire->pin, 0);
+            write_bit(onewire, 0);
         }
         else if(bit0 && !bit1)
         {
             // All devices have a 1, so we select them all
             bRom[i/8] |= (1<<(i%8));
-            write_bit(onewire->port, onewire->pin, 1);
+            write_bit(onewire, 1);
         }
         else if(!bit0 && !bit1)
         {
             // Both 0 and 1 are found. Our path must be split.
             // First, we continue the branch were a 0 is at rank i
             bRom[i/8] &= ~(1<<(i%8));
-            write_bit(onewire->port, onewire->pin, 0); // A write must follow each couple of reads
+            write_bit(onewire, 0); // A write must follow each couple of reads
             status  = 0;
-            status |= do_search(onewire->port, onewire->pin, i+1, 0, found_rom);
+            status |= do_search(onewire, i+1, 0, found_rom);
             // Then, we redo the first part, use a 1 at rank i, and finish the branch
             bRom[i/8] |= (1<<(i%8));
-            status |= do_search(onewire->port, onewire->pin, i+1, 1, found_rom);
+            status |= do_search(onewire, i+1, 1, found_rom);
             // If status < 0, something went wrong, the results may be partial only.
             return (! status) ? 0 : -6;
         }
@@ -351,14 +351,14 @@ static int do_search(OneWire* onewire, unsigned char iFrom, char bRedo, SEARCH_C
 
 LIBDALLAS_API int dallas_rom_search(OneWire* onewire, SEARCH_CALLBACK found_rom)
 {
-    return do_search(onewire->port, onewire->pin, 0, 0, found_rom);
+    return do_search(onewire, 0, 0, found_rom);
 }
 
 LIBDALLAS_API int dallas_rom_skip(OneWire* onewire, unsigned char operation)
 {
     //send a 0xCC
-    write_byte(onewire->port, onewire->pin, SKIP_ROM);
-    write_byte(onewire->port, onewire->pin, operation);
+    write_byte(onewire, SKIP_ROM);
+    write_byte(onewire, operation);
 
     if(operation == CONVERT_T || operation == COPY_SCRATCHPAD) //User be careful about pullup
     {
@@ -380,7 +380,7 @@ LIBDALLAS_API int dallas_rom_match(OneWire* onewire, unsigned char* rom_code)
     int status;
     for(i = 0, status = 0; i < 8, !status; ++i)
     {
-        status = write_byte(onewire->port, onewire->pin, rom_code[i]);
+        status = write_byte(onewire, rom_code[i]);
     }
 
     return status;
@@ -393,11 +393,11 @@ LIBDALLAS_API int dallas_rom_match(OneWire* onewire, unsigned char* rom_code)
 LIBDALLAS_API int dallas_scratchpad_read(OneWire* onewire, unsigned char *scratch, char num)
 {
     int i, status;
-    status = write_byte(onewire->port, onewire->pin, READ_SCRATCHPAD);
+    status = write_byte(onewire, READ_SCRATCHPAD);
 
     for(i = 0; i < num && !status; ++i)
     {
-        status = read_byte(onewire->port, onewire->pin);
+        status = read_byte(onewire);
         scratch[i] = (char)status;
     }
 
@@ -410,7 +410,7 @@ LIBDALLAS_API int dallas_scratchpad_write(OneWire* onewire, unsigned char *data)
 
     for(i = 0, status = 0; i < 3 && !status; ++i)
     {
-        status = write_byte(onewire->port, pin, data[i]);
+        status = write_byte(onewire, data[i]);
     }
 
     return status;
@@ -419,14 +419,14 @@ LIBDALLAS_API int dallas_scratchpad_write(OneWire* onewire, unsigned char *data)
 LIBDALLAS_API int dallas_temperature_read(OneWire* onewire)
 {
     int i, status, temperature = 0;
-    status = write_byte(onewire->port, onewire->pin, READ_SCRATCHPAD);
+    status = write_byte(onewire, READ_SCRATCHPAD);
     if(status)
         return 0xDEADBEEF;
         //0xB16B00B5
 
     for(i = 0; i < 2; ++i)
     {
-        status = read_byte(onewire->port, onewire->pin);
+        status = read_byte(onewire);
         if(status < 0)
             return 0xDEADBEEF;
 
@@ -437,7 +437,7 @@ LIBDALLAS_API int dallas_temperature_read(OneWire* onewire)
         temperature += status<<(8*i);
     }
 
-    pulseInit(onewire->port, onewire->pin);
+    pulseInit(onewire);
     return temperature;
 }
 
