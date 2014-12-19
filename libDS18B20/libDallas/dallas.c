@@ -89,7 +89,7 @@ LIBDALLAS_API int pulseInit(OneWire* onewire)
     char bPresence;//, bPresenceTested; // (remember, bool does not exist in C ^^)
 
     iolib_setdir(onewire->pullup_port, onewire->pullup_pin, BBBIO_DIR_OUT); //Each transaction begins with a pulse
-    //so we set the pullup to out here for every transaction
+    //so we set the pullup to high here for every transaction
     //pullup is handling a mosfet, not a direct pullup.
     pin_high(onewire->pullup_port, onewire->pullup_pin);
 
@@ -266,7 +266,7 @@ LIBDALLAS_API int dallas_rom_read(OneWire* onewire, unsigned char *bRom)
 // Does the search from bit number iFrom.
 //  If bRedo, resends the validated sequence contained in static bRom until bit iFrom,
 //  then continues the search.
-static int do_search(OneWire* onewire, unsigned char iFrom, char bRedo, SEARCH_CALLBACK found_rom)
+int do_search(OneWire* onewire, unsigned char iFrom, char bRedo, SEARCH_CALLBACK found_rom)
 {
     // Least significant bit firts, least significant byte first (little endian)
     static unsigned char bRom[8];
@@ -363,6 +363,7 @@ LIBDALLAS_API int dallas_rom_skip(OneWire* onewire, unsigned char operation)
     if(operation == CONVERT_T || operation == COPY_SCRATCHPAD) //User be careful about pullup
     {
         struct timespec tBegins, tEnd;
+        clock_gettime(CLOCK_REALTIME, &tBegins); // This takes ~2µs (the first calls are always longer)
         pin_low(onewire->pullup_port, onewire->pullup_pin);
         WAIT_NANO(tBegins, tEnd, 750000000); /*Blocking here or risk user destroy the BBB?
         waiting tconv for conversion or 10ms for copying scratchpad
@@ -377,7 +378,7 @@ LIBDALLAS_API int dallas_rom_skip(OneWire* onewire, unsigned char operation)
 LIBDALLAS_API int dallas_rom_match(OneWire* onewire, unsigned char* rom_code)
 {
     int i;
-    int status = 0;
+    int status = write_byte(onewire, MATCH_ROM);
     for(i = 0, status = 0; i < 8 && !status; ++i)
     {
         status = write_byte(onewire, rom_code[i]);
@@ -395,20 +396,21 @@ LIBDALLAS_API int dallas_scratchpad_read(OneWire* onewire, unsigned char *scratc
     int i, status;
     status = write_byte(onewire, READ_SCRATCHPAD);
 
-    for(i = 0; i < num && !status; ++i)
+    for(i = 0; i < num && (status>-1); ++i)
     {
         status = read_byte(onewire);
-        scratch[i] = (char)status;
+        scratch[i] = (unsigned char)status;
     }
 
-    return status;
+    return (status>-1) ? 0:status;
 }
 
 LIBDALLAS_API int dallas_scratchpad_write(OneWire* onewire, unsigned char *data)
 {
-    int i, status;
+    int i;
+    int status = write_byte(onewire, WRITE_SCRATCHPAD);
 
-    for(i = 0, status = 0; i < 3 && !status; ++i)
+    for(i = 0; i < 3 && !status; ++i)
     {
         status = write_byte(onewire, data[i]);
     }

@@ -21,6 +21,7 @@ READ_POWER_SUPPLY = 0xB4
 
 import ctypes as c
 from binascii import hexlify
+import time
 
 
 lib = c.cdll.LoadLibrary('./libDallas/libDallas.so')
@@ -52,18 +53,23 @@ class Sensor :
         
 
     def GetTemperature(self) :
-        lib.pulseInit(self.wire.port, self.wire.pin)
-        cBuf = c.create_string_buffer(self.ID)
-        a = lib.dallas_rom_match(self.wire.port, self.wire.pin, c.byref(cBuf))
-        return a, lib.dallas_temperature_read(self.wire.port, self.wire.pin)
+        lib.pulseInit(c.byref(self.wire))
+        cBuf = c.create_string_buffer(self.ID, size=8)
+        #a = lib.dallas_rom_match(c.byref(self.wire), c.byref(cBuf))
+        #return a, lib.dallas_temperature_read(c.byref(self.wire))
+        a = lib.dallas_rom_match(c.byref(self.wire), c.byref(cBuf))
+        scratchBuf = c.create_string_buffer(9)
+        b = lib.dallas_scratchpad_read(c.byref(self.wire), c.byref(scratchBuf), 9)
+        print(a,b,hexlify(scratchBuf.raw))
+        return a, b, scratchBuf.raw
 
     def ConvertTemperature(self) :
-        lib.pulseInit(self.wire.port, self.wire.pin)
-        print('Manque un rom_match ici')
-        lib.write_byte(self.wire.port, self.wire.pin, CONVERT_T)
+        lib.pulseInit(c.byref(self.wire))
+        lib.dallas_rom_match(c.byref(self.wire), self.ID)
+        lib.write_byte(c.byref(self.wire), CONVERT_T)
         #must enable strong pullup
 
-class OneWire :
+class OneWire(c.Structure) :
 #Toutes les communications commencent par lib.pulseInit()
 #suivie d'une commande rom lib.dallas_rom_cmd()
 #suivie d'une fonction du capteur lib.write_byte()
@@ -75,9 +81,15 @@ class OneWire :
     Attributes : -port
                  -pin
                  -lSensors """
-    def __init__(self, port, pin) :
+    _fields_ = [("port", c.c_char),
+                ("pin", c.c_char),
+                ("pullup_port", c.c_char),
+                ("pullup_pin", c.c_char)]
+    def __init__(self, port, pin, pullup_port, pullup_pin) :
         self.port = port
         self.pin = pin
+        self.pullup_port = pullup_port
+        self.pullup_pin = pullup_pin
         self.lSensors = []
         lib.dallas_init()
         #lib.pulseInit(port, pin)
@@ -88,7 +100,7 @@ class OneWire :
             print(hexlify(rom))
         callback = c.CFUNCTYPE(None, c.c_void_p)(foundROM)
         for i in range(10):
-            if not lib.dallas_rom_search(port, pin, callback):
+            if not lib.dallas_rom_search(c.byref(self), callback):
                 print("Success, {} reading{}!!".format(i, 's' if i!=1 else ''))
                 break
         
@@ -102,9 +114,11 @@ class OneWire :
     #    lib.dallas_free()
 
     def AllConvertTemperature(self) :
-        lib.pulseInit(self.port, self.pin)
-        return lib.dallas_rom_skip(self.port, self.pin, CONVERT_T)
+        lib.pulseInit(c.byref(self))
+        return lib.dallas_rom_skip(c.byref(self), CONVERT_T)
         #must enable strong pullup
+        #this is now done in C library
+
 
 
 
@@ -158,10 +172,18 @@ if False:
 
 
 if True:
-    wire = OneWire(9,13)
+    wire = OneWire(9,13,9,14)
     wire.AllConvertTemperature()
     buf = (c.c_byte*9)()
-    #lib.dallas_rom_match(wire.port, wire.pin, c.byref(buf), 9)
+    #lib.dallas_rom_match(c.byref(wire), c.byref(buf), 9)
+    #time.sleep(1)
+    lTemp = []
+    for sensor in wire.lSensors :
+        lTemp.append(sensor.GetTemperature())
 
+    print(lTemp)
+ 
+
+#lire scratchpad :
+#lib.dallas_scratchpad_read(c.byref(wire), buf*9, 9
 #lib.dallas_free()
-
