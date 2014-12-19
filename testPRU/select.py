@@ -21,6 +21,7 @@ print("Don't forget to\npruicss.close()\nmem_fd.close()")
 
 MENU = SHARED + 0x20
 CFG = 0x026000
+INTC = 0x020000
 
 def selectMenu(i,arg):
     """0 is oldest: test sync own measure
@@ -31,7 +32,9 @@ def selectMenu(i,arg):
 
 print('selectMenu(1,1)')
 
-def pri(off,size):
+def read(off,size):
     print(hexlify(pruicss[off:off+size]))
+def set(off,data):
+    pruicss[off:off+len(data)] = data
 
-print('pri(CFG,4)')
+print('read(CFG,4)\nset(SHARED,bytes([0,0,0,0])')
