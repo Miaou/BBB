@@ -148,7 +148,7 @@ QUIT:
     SBCO    r0, c28, 0x0C, 4  // Clears CYCLE count (C28 points to the PRU control flags)
     
     // Send notification to Host for program completion
-    //MOV     r31.b0, PRU0_ARM_INTERRUPT+16
-    MOV     r31.b0, 0+32
+    MOV     r31.b0, PRU0_ARM_INTERRUPT+16
+    //MOV     r31.b0, 3+32
     HALT
     
