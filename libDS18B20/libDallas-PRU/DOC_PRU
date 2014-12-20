@@ -58,6 +58,7 @@ Activons le PRU :
 - il faut faire à chaque boot le echo BB-BONE-PRU > /sys/devices/bone_capemgr.9/slots
 
 Utiliser les pins GPIO : aller lire/écrire dans la L4 de l'ARM directement, adressable comme si on y était
+- activer la communication avec la mémoire externe (j'ai perdu pas mal de temps avec ça... http://nomel.tumblr.com/post/30006622413/beaglebone-tutorial-accessing-main-memory-from)
 - trouver le registre mémoire qui gère ce pin : lire la colonne mode 7 de http://www.element14.com/community/message/76416/l/re-pinmux--enabling-spi#76416 (par exemple, P9_13 -> gpio0_31)
 - aller à la section "2 ARM Cortex-A8 Memory Map", trouver GPIO0 dans une des tables L4 (la L4_WKUP peripheral map) (pour GPIO0, on obtient la base adresse 0x44E0_7000)
 - aller à la section "25.4.1 GPIO Registers" (page 4871) pour avoir la liste des opérations

@@ -25,11 +25,12 @@ LIB_STA=
 LIB_DYN=-lprussdrv
 SRC=latency.c
 OBJ=$(SRC:%.c=%.o)
-SRCP=latency.p minim-noInt.p minim-stall.p
+SRCP=latency.p
 #OLIB=libDallas.so
 OUT=latency
 BIN=$(SRCP:%.p=%.bin)
-MINIMS=noInt stall
+MINIMS=noInt stall noStall
+SRCP+= $(MINIMS:%=minim-%.p)
 
 
 
