@@ -36,7 +36,7 @@ Then, an execute_chain launches the chain, waits for interrupt
 
 PRU "SHARED memory" map (size 12kB == 0x3000):
 - 0x00 -> 0xFF : configuration
-- 0x0100 -> 0x1804 : action chain (512 actions)
+- 0x0100 -> 0x1904 : action chain (512 actions)
 
 Configuration part:
 | bTreatActionChain |

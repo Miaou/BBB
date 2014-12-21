@@ -10,13 +10,27 @@
 
 #include "dallas.hp"
 
-.origin 0
+
+.entrypoint CONFIG
 
 // Configuration
+CONFIG:
+    CONFIGURE_C28   RAM_SHARED
     ENABLE_OCP
-    // Make C28 points to SHARED
     // Resets COMMAND
+    ZERO    r0, 4
+    SBCO    r0, C28, 0, 4
     // Resets actions
+    MOV     r0, P_ACTION
+    MOV     r1, N_ACTION
+    ZERO    r2, S_ACTION
+    SBCO    r2, r0, 0, 4    // Clears number of actions
+    ADD     r0, r0, 4
+  clear_action:
+    SBCO    r2, r0, 0, S_ACTION // Clears one action
+    SUB     r1, r1, 1
+    ADD     r0, r0, S_ACTION    // Goes to next action
+    QBNE    clear_action, r1, 0
 
 // Main switch
 MAIN:
@@ -24,7 +38,7 @@ MAIN:
     QBEQ    MAIN, r0, NO_COMMAND
     // Parse action tree
     MOV     r1, 0x100       // Action offset
-    LBCO    r2, C28, r1, 4  // Number of remaining actions
+    LBCO    r2, C28, r1, 4  // Number of remaining actions (should be below N_ACTION)
     ADD     r1, r1, 4
   switch_action:
     LBCO    r3, C28, r1, 12 // r3=Action, r4=GPIO base, r5=GPIO mask
@@ -80,7 +94,19 @@ WAIT:
     QBNE    wait_sub, r4, 0
     QBA     post_action
 
+
 // Quit'n'clean
 QUIT:
+    // Makes GPIO back to input (safer)
+    // No, you can't.
 
-
+    // Disable cycle count and clears it
+    LBCO    r7, c4, CTRREG_CONTROL, 1 // Takes lower byte of the CONTROL flag to clear the COUNTER_ENABLE bit
+    CLR     r7.t3
+    SBCO    r7, c4, CTRREG_CONTROL, 1 
+    MOV     r7, 0
+    SBCO    r7, c4, CTRREG_CYCLE, 4   // Clears CYCLE count
+    
+    
+    MOV     r31.b0, INTC_VALID_STROBE | PRU0_ARM_INTERRUPT // Send notification to Host
+    HALT

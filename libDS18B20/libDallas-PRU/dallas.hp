@@ -1,5 +1,78 @@
-// COMPLETE ME
+// PRU part of the Dallas' lib
+// PAB, 2014
 
+// cf. ./DOC_PRU for my references.
+// Inspired from ../../testPRU/latency.hp, which might not exist on this server ;-)
+
+
+#ifndef _dallas_HP_
+#define _dallas_HP_
+
+
+// We are on a AM335x, PRUSSv2
+
+
+// Memory offsets
+#define RAM_SELF        0x000000
+#define RAM_OTHER       0x002000
+#define RAM_BOTH        0x010000
+
+// Control registers
+// Base pointers
+#define RAM_CTRREG_0    0x022000
+#define RAM_CTRREG_1    0x024000
+// Some register offsets
+#define CTRREG_CONTROL  0x00
+#define CTRREG_CONTROL_COUNTER_ENABLE_MASK  0x08
+#define CTRREG_CYCLE    0x0C
+// Constant table offset (used to custom C24..C25, C26..C27)
+#define CTRREG_CTBIR_0  0x20
+#define CTRREG_CTBIR_1  0x24
+// Constant table offset (used to custom C28..C29, C30..C31)
+#define CTRREG_CTPPR_0  0x28
+#define CTRREG_CTPPR_1  0x2C
+
+// Configuration registers
+// Base pointer (C4 naturally points to RAM_CFG)
+#define RAM_CFG         0x026000
+// Some register offsets
+#define CFGREG_SYSCTRL  0x04
+#define CFGREG_SYSCTRL_STANDBY_INIT_MASK   0x10
+
+
+// Interrupt mappings (compatible with prussdrv)
+#define INTC_VALID_STROBE       0x20
+#define PRU0_PRU1_INTERRUPT     1
+#define PRU1_PRU0_INTERRUPT     2
+#define PRU0_ARM_INTERRUPT      3
+#define PRU1_ARM_INTERRUPT      4
+#define ARM_PRU0_INTERRUPT      5
+#define ARM_PRU1_INTERRUPT      6
+
+
+// -----------------
+// Macro definitions
+
+// Enables communication with external memory (pointers > 0x080000)
+.macro  ENABLE_OCP 
+.mparam a=r0, b=r1
+    MOV     a, RAM_CFG              // SYSCFG register adress in the CFG memory
+    MOV     b, a, CFGREG_SYSCTRL, 1 // Get the SYSCFG register
+    CLR     b.t4                    // Clears the STANDBY_INIT bit to enable the OCP master ports
+    SBBO    b, a, CFGREG_SYSCTRL, 1 // Sets the SYSCFG register
+.endm
+
+// Configure C28 for PRU 0 (local customizable pointer)
+//  to point to a local specified offset (constant offset,& 0x00FFFF00)
+.macro  CONFIGURE_C28
+.mparam off, a=r0, b=r1
+    MOV     a, off>>8
+    MOV     b, RAM_CTRREG_0
+    SBBO    a, b CFGREG_CTPPR_0, 2
+.endm
+
+// ----------------
+// Dallas' specific
 
 // Menu constants
 #define NO_COMMAND      0
@@ -11,3 +84,11 @@
 #define CMD_WAIT        6
 //#define CMD_QUIT        7
 
+// Action offset, number of possible actions, sizeof(ACTION)
+#define P_ACTION        0x0100
+#define N_ACTION        0x0200
+#define S_ACTION        0x12
+
+
+
+#endif // _dallas_HP_
