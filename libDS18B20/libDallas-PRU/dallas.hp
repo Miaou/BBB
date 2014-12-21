@@ -1,0 +1,13 @@
+// COMPLETE ME
+
+
+// Menu constants
+#define NO_COMMAND      0
+#define CMD_SET_DIR_OUT 1
+#define CMD_SET_DIR_IN  2
+#define CMD_SET_LOW     3
+#define CMD_SET_HIGH    4
+#define CMD_GET         5
+#define CMD_WAIT        6
+//#define CMD_QUIT        7
+

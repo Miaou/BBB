@@ -17,8 +17,8 @@ As PRU has very little procedural workflow, the number of "functions" has to be 
 - pin_set_dir_out   (u32 GPIO base, u32 mask)
 - pin_set_low       (u32 GPIO base, u32 mask)
 - pin_set_high      (u32 GPIO base, u32 mask)
-- pin_get           (u32 GPIO base, u32 mask) <- will write the value in the base
-- wait              (nanosec) <- reliable below 100ns (sync time with GPIO writes)
+- pin_get           (u32 GPIO base, u32 mask) <- will write 0 in base if not signal
+- wait              (u32 nTenNano, u32) <- accurate (>10) but other commands are not instant
 Must activate it's internal cycle counter to accurately timestamp its actions
 
 Higher level functions are chained sequence of low level actions.
@@ -36,7 +36,7 @@ Then, an execute_chain launches the chain, waits for interrupt
 
 PRU "SHARED memory" map (size 12kB == 0x3000):
 - 0x00 -> 0xFF : configuration
-- 0x0100 -> 0x1104 : action chain (512 actions)
+- 0x0100 -> 0x1804 : action chain (512 actions)
 
 Configuration part:
 | bTreatActionChain |
