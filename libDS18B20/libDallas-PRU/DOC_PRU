@@ -67,6 +67,7 @@ Utiliser les pins GPIO : aller lire/écrire dans la L4 de l'ARM directement, adre
   - (et GPIO_SETDATAOUT (0x194) pour le mettre à 1)
   - pour lire la valeur, utiliser GPIO_DATAIN (0x138)
   - GPIO_DATAOUT peut être utilisé pour contrôler la valeur de sortie, mais c'est moins facile qu'avec SET/CLEAR (latence ?)
+- savoir que c'est pas la meilleure façon de faire (il faudrait configurer les pins pour les attribuer au PRU en mode direct, temps d'accès plus court, plus répétable)
 
 Les interruptions :
 - pas facile de s'y retrouver juste avec la doc... On apprend ici qu'on aurait du polling : http://events.linuxfoundation.org/sites/events/files/slides/Enhancing%20RT%20Capabilities%20with%20the%20PRU%20final.pdf
@@ -75,3 +76,4 @@ Les interruptions :
   - les interruptions dans le PRU sont juste enregistrées dans des registres
   - (ce qui suppose qu'il faut aller les poller)
 - donc si c'est juste ça, autant se réserver une variable en shared memory et zou...
+- il semble (cf testPRU/reliability) que l'écriture mémoire se passe bien par bloc de 4 octets (pas de problèmes d'accès à une ressource partagée constaté)
