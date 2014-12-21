@@ -69,6 +69,19 @@
 #define ARM_PRU1_INTERRUPT      22
 
 
+// This enables the OCP master ports. Mandatory if trying to access memory outside PRU
+// Parameters are temporary registers
+.macro  ENABLE_OCP
+.mparam a=r0, b=r1
+    MOV     a, 0x26004 // SYSCFG register adress in the CFG memory
+    LBBO    b, a, 0, 1 // Get the SYSCFG register
+    CLR     b.t4 // Clears the STANDBY_INIT bit to enable the OCP master ports
+    SBBO    b, a, 0, 1 // Sets the SYSCFG register
+.endm
+
+// Maybe I should build some "set constant" macro, but hmm
+//.macro  
+
 
 #endif //_latency_HP_
 

@@ -28,6 +28,8 @@ LATENCY_TEST:
     MOV     r1, (RAM_CTRREG_0|CONTROL)>>8
     SBBO    r1, r0, 0, 4 // C28 now points at the CONTROL flags of the PRU0. Seems more useful
     
+    ENABLE_OCP // Now, I should not forget that anymore...
+    
 // Writes to SET/CLEARDATAOUT on P9_13, waits for an answer
 LATENCY_SYNC:
     //MOV     r1, GPIO0
