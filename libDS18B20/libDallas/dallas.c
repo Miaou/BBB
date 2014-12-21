@@ -41,7 +41,7 @@ LIBDALLAS_API int dallas_init(void)
 {
     struct timespec tTest;
     if(clock_gettime(CLOCK_REALTIME, &tTest))
-        return -1;
+        return ERR_NO_CLOCK;
     return iolib_init();
 }
 
@@ -52,10 +52,11 @@ LIBDALLAS_API int dallas_free(void)
 }
 
 // Substract two timespec (comparing clock_gettime)
+//  (up two +/- 1 seconde)
 int nanodiff(struct timespec *t0, struct timespec *t1)
 {
     if(-1 > t1->tv_sec-t0->tv_sec && t1->tv_sec-t0->tv_sec > 1)
-        return 0xDEADBEEF;
+        return ERR_DIFF_TOO_BIG;
 
     int nd = t1->tv_nsec-t0->tv_nsec;
     int sd = t1->tv_sec-t0->tv_sec;
@@ -85,6 +86,7 @@ int nanodiff(struct timespec *t0, struct timespec *t1)
 //  master should stay in receive mode until 480µs has been spent since entering receive mode
 LIBDALLAS_API int pulseInit(OneWire* onewire)
 {
+//FIXME: check timings and return ERR_MISSED_TSLOT
     struct timespec tBegins, tSwitch, tEnd;
     char bPresence;//, bPresenceTested; // (remember, bool does not exist in C ^^)
 
@@ -129,8 +131,8 @@ int write_bit(OneWire* onewire, char bit)
     if(bit&1)
     {
         nNanosec = nanodiff(&tBegins, &tEnd);
-        if(nNanosec == 0xDEADBEEF || nNanosec > 15000)
-            return -1;
+        if(nNanosec == ERR_DIFF_TOO_BIG || nNanosec > 15000)
+            return ERR_MISSED_TSLOT;
         iolib_setdir(onewire->port, onewire->pin, BBBIO_DIR_IN);
     }
     WAIT_NANO(tBegins, tEnd, 75000);
@@ -139,8 +141,8 @@ int write_bit(OneWire* onewire, char bit)
     WAIT_NANO(tEnd, tBegins, 10000); // Leave it 10 instead of just 1, to be sure !
     nNanosec = nanodiff(&tBegins, &tEnd);
 
-    if(nNanosec == 0xDEADBEEF || nNanosec > 120000)
-        return -1;
+    if(nNanosec == ERR_DIFF_TOO_BIG || nNanosec > 120000)
+        return ERR_MISSED_TSLOT;
 
     return 0;
 }
@@ -183,10 +185,10 @@ int read_bit(OneWire* onewire)
     clock_gettime(CLOCK_REALTIME, &tEnd);
     nNanosec = nanodiff(&tBegins, &tEnd);
     WAIT_NANO(tBegins, tEnd, 63000); // 60+safety.
-    if(nNanosec == 0xDEADBEEF || nNanosec > 15000)
+    if(nNanosec == ERR_DIFF_TOO_BIG || nNanosec > 15000)
     {
         //printf("Time frame was missed: %u nanosecs elapsed\n", nNanosec);
-        return -1;
+        return ERR_MISSED_TSLOT;
     }
     return bBit;
 }
@@ -219,7 +221,7 @@ LIBDALLAS_API int read_byte(OneWire* onewire)
     {
         status = read_bit(onewire);
         if(status<0)
-            return -1;
+            return status;
         byte |= (status<<i);
     }
 
@@ -244,8 +246,10 @@ LIBDALLAS_API int dallas_rom_read(OneWire* onewire, unsigned char *bRom)
     //unsigned char bRom[8];
     int i, status;
 
-    if(! pulseInit(onewire) || ! bRom)
-        return -1;
+    if(! pulseInit(onewire))
+        return ERR_NO_PRESENCE;
+    if(! bRom)
+        return ERR_INVALID_ARGS;
 
     // Send a 0x33
     write_byte(onewire, READ_ROM);
@@ -254,7 +258,7 @@ LIBDALLAS_API int dallas_rom_read(OneWire* onewire, unsigned char *bRom)
     {
         status = read_byte(onewire);
         if(status < 0)
-            return -1;
+            return status;
         bRom[i] = status;
     }
 
@@ -280,9 +284,9 @@ int do_search(OneWire* onewire, unsigned char iFrom, char bRedo, SEARCH_CALLBACK
     if(bRedo || iFrom==0)
     {
         if(! pulseInit(onewire))
-            return -1;
+            return ERR_NO_PRESENCE;
         // Sends a 0xF0
-        write_byte(onewire, SEARCH_ROM);
+        write_byte(onewire, SEARCH_ROM); // FIXME: check return value
     }
 
     if(bRedo)
@@ -301,42 +305,42 @@ int do_search(OneWire* onewire, unsigned char iFrom, char bRedo, SEARCH_CALLBACK
     {
         status = read_bit(onewire);
         if(status < 0)
-            return -2;
+            return ERR_MISSED_TSLOT;
         bit0 = status;
         status = read_bit(onewire);
         if(status < 0)
-            return -3;
+            return ERR_MISSED_TSLOT;
         bit1 = status;
 
         if(!bit0 && bit1)
         {
             // All devices have a 0, so we select them all
             bRom[i/8] &= ~(1<<(i%8));
-            write_bit(onewire, 0);
+            write_bit(onewire, 0); // FIXME: check return value
         }
         else if(bit0 && !bit1)
         {
             // All devices have a 1, so we select them all
             bRom[i/8] |= (1<<(i%8));
-            write_bit(onewire, 1);
+            write_bit(onewire, 1); // FIXME: check return value
         }
         else if(!bit0 && !bit1)
         {
             // Both 0 and 1 are found. Our path must be split.
             // First, we continue the branch were a 0 is at rank i
             bRom[i/8] &= ~(1<<(i%8));
-            write_bit(onewire, 0); // A write must follow each couple of reads
+            write_bit(onewire, 0); // A write must follow each couple of reads // FIXME: check return value
             status  = 0;
             status |= do_search(onewire, i+1, 0, found_rom);
             // Then, we redo the first part, use a 1 at rank i, and finish the branch
             bRom[i/8] |= (1<<(i%8));
             status |= do_search(onewire, i+1, 1, found_rom);
             // If status < 0, something went wrong, the results may be partial only.
-            return (! status) ? 0 : -6;
+            return (! status) ? 0 : ERR_SEARCH_PARTIAL;
         }
         else // bit0 && bit1
             // Devices are not responding.
-            return -4;
+            return ERR_NO_PRESENCE;
     }
 
     // Only reach here if a branch is finished.
