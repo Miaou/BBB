@@ -6,4 +6,4 @@
 	url = git://github.com/Miaou/BBBIOlib
 [submodule "libDS18B20/libDallas-PRU/pypruss"]
 	path = libDS18B20/libDallas-PRU/pypruss
-	url = git://github.com/Miaou/pypruss-fork
+	url = https://github.com/Miaou/pypruss-fork.git
