@@ -23,11 +23,11 @@ LDFLAGS=$(MODE_LDFLAGS) -L$(PATH_PRU_LOADER)lib/
 #LIB_STA=-lprussdrv
 LIB_STA=
 LIB_DYN=-lprussdrv
-SRC=latency.c
+SRC=latency.c reliability.c
 OBJ=$(SRC:%.c=%.o)
-SRCP=latency.p
+SRCP=$(SRC:%.c=%.p)
 #OLIB=libDallas.so
-OUT=latency
+OUT=latency reliability
 BIN=$(SRCP:%.p=%.bin)
 MINIMS=noInt stall noStall
 SRCP+= $(MINIMS:%=minim-%.p)
@@ -55,7 +55,7 @@ $(PASM):
 	make -C$(PATH_PRU_SW)
 
 $(OUT): $(OBJ)
-	$(CC) $(LDFLAGS) $(LIB_DYN) $(OBJ) -o $@ $(LIB_STA)
+	$(CC) $(LDFLAGS) $(LIB_DYN) $@.o -o $@ $(LIB_STA)
 %.o: %.c
 	$(CC) $(CFLAGS) -c $< -o $@
 
