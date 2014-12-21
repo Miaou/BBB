@@ -5,7 +5,11 @@
 #include <stdio.h>
 #include "BBBiolib.h"
 
+// Controlling which functions are exported in the lib:
+//  (https://www.gnu.org/software/gnulib/manual/html_node/Exported-Symbols-of-Shared-Libraries.html)
+
 #define LIBDALLAS_API __attribute__((__visibility__("default")))
+
 
 /*List of all DS18B.. commands*/
 
