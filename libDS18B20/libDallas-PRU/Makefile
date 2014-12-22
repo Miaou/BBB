@@ -5,6 +5,7 @@
 
 PATH_PRU_SW=./am335x_pru_package/pru_sw/
 PATH_PRU_LOADER=$(PATH_PRU_SW)app_loader/
+PATH_PYPRUSS=./pypruss/pypruss
 MODE=not_release
 BUILD_LIB=yes
 
@@ -44,7 +45,6 @@ BIN=$(SRCP:%.p=%.bin)
 .PHONY: all clean cleannolib
 
 all: precompile $(OBJ) $(OUT) $(BIN)
-	@echo "### -> I did not make minims ###"
 
 cleannobin:
 	rm -f $(OBJ)
@@ -52,14 +52,16 @@ clean: cleannobin
 	rm -f $(OUT)
 #	rm -f $(OLIB)
 	rm -f $(BIN)
-	rm -f $(MINIMS:%=minim-%)
+#	make -C$(PATH_PRU_SW) clean
+	make -C$(PATH_PYPRUSS) clean
 
-
-precompile: $(PATH_PRU_LOADER)lib/libprussdrv.so $(PASM)
+precompile: $(PATH_PRU_LOADER)lib/libprussdrv.so $(PASM) pypruss.so
 $(PATH_PRU_LOADER)lib/libprussdrv.so:
 	make -C$(PATH_PRU_SW)
 $(PASM):
 	make -C$(PATH_PRU_SW)
+pypruss.so:
+	make -C$(PATH_PYPRUSS)
 
 $(OUT): $(OBJ)
 	$(CC) $(LDFLAGS) $(LIB_DYN) $@.o -o $@ $(LIB_STA)
