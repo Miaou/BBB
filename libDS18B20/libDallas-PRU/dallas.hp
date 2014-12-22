@@ -50,6 +50,19 @@
 #define ARM_PRU1_INTERRUPT      6
 
 
+// ---------------------
+// GPIO registers offset
+#define GPIO0       0x44E07000
+#define GPIO1       0x4804C000
+// With useful registers (cf GPIO Registers of the AM335x techref)
+#define GPIO_OE             0x0134
+#define GPIO_DATAIN         0x0138
+#define GPIO_CLEARDATAOUT   0x0190
+#define GPIO_SETDATAOUT     0x0194
+// Please use this one as readonly.
+#define GPIO_DATAOUT        0x013C
+
+
 // -----------------
 // Macro definitions
 
@@ -57,7 +70,7 @@
 .macro  ENABLE_OCP 
 .mparam a=r0, b=r1
     MOV     a, RAM_CFG              // SYSCFG register adress in the CFG memory
-    MOV     b, a, CFGREG_SYSCTRL, 1 // Get the SYSCFG register
+    LBBO    b, a, CFGREG_SYSCTRL, 1 // Get the SYSCFG register
     CLR     b.t4                    // Clears the STANDBY_INIT bit to enable the OCP master ports
     SBBO    b, a, CFGREG_SYSCTRL, 1 // Sets the SYSCFG register
 .endm
@@ -68,21 +81,24 @@
 .mparam off, a=r0, b=r1
     MOV     a, off>>8
     MOV     b, RAM_CTRREG_0
-    SBBO    a, b CFGREG_CTPPR_0, 2
+    SBBO    a, b, CTRREG_CTPPR_0, 2
 .endm
 
 // ----------------
 // Dallas' specific
 
 // Menu constants
-#define NO_COMMAND      0
-#define CMD_SET_DIR_OUT 1
-#define CMD_SET_DIR_IN  2
-#define CMD_SET_LOW     3
-#define CMD_SET_HIGH    4
-#define CMD_GET         5
-#define CMD_WAIT        6
-//#define CMD_QUIT        7
+#define COMMAND_STDBY   0
+#define COMMAND_START   1
+#define COMMAND_WORKING 2
+#define COMMAND_BYE     3
+#define ACT_SET_DIR_OUT 1
+#define ACT_SET_DIR_IN  2
+#define ACT_SET_LOW     3
+#define ACT_SET_HIGH    4
+#define ACT_GET         5
+#define ACT_WAIT        6
+//#define ACT_QUIT        7
 
 // Action offset, number of possible actions, sizeof(ACTION)
 #define P_ACTION        0x0100

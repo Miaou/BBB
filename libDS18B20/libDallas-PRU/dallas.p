@@ -11,51 +11,64 @@
 #include "dallas.hp"
 
 
+.origin 0
 .entrypoint CONFIG
 
 // Configuration
 CONFIG:
-    CONFIGURE_C28   RAM_SHARED
+    CONFIGURE_C28   RAM_BOTH
     ENABLE_OCP
     // Resets COMMAND
-    ZERO    r0, 4
+    ZERO    &r0, 4
     SBCO    r0, C28, 0, 4
     // Resets actions
-    MOV     r0, P_ACTION
+    MOV     r0, RAM_BOTH|P_ACTION
     MOV     r1, N_ACTION
-    ZERO    r2, S_ACTION
-    SBCO    r2, r0, 0, 4    // Clears number of actions
+    ZERO    &r2, S_ACTION
+    SBBO    r2, r0, 0, 4    // Clears number of actions
     ADD     r0, r0, 4
   clear_action:
-    SBCO    r2, r0, 0, S_ACTION // Clears one action
+    SBBO    r2, r0, 0, S_ACTION // Clears one action
     SUB     r1, r1, 1
     ADD     r0, r0, S_ACTION    // Goes to next action
     QBNE    clear_action, r1, 0
 
 // Main switch
 MAIN:
-    LBCO    r0, C28, 0, 4
-    QBEQ    MAIN, r0, NO_COMMAND
+    LBCO    r0, C28, 0, 4   // Should be COMMAND_START, and is set to WOMMAND_WORKING while working
+    // Parsing command
+    QBEQ    MAIN, r0, COMMAND_STDBY
+    QBEQ    QUIT, r0, COMMAND_BYE
+    MOV     r1, COMMAND_STDBY
+    SBCO    r1, C28, 0, 4
+    QBEQ    MAIN, r0, COMMAND_WORKING
+    MOV     r1, COMMAND_WORKING
+    SBCO    r1, C28, 0, 4
+    QBNE    MAIN, r0, COMMAND_START
     // Parse action tree
-    MOV     r1, 0x100       // Action offset
+    MOV     r1, RAM_BOTH
+    MOV     r1, P_ACTION    // Action offset
     LBCO    r2, C28, r1, 4  // Number of remaining actions (should be below N_ACTION)
     ADD     r1, r1, 4
   switch_action:
     LBCO    r3, C28, r1, 12 // r3=Action, r4=GPIO base, r5=GPIO mask
     // r1 must points to current location, so that GET can work)
-    QBEQ    SET_DIR_OUT, r3, CMD_SET_DIR_OUT
-    QBEQ    SET_DIR_IN, r3, CMD_SET_DIR_IN
-    QBEQ    SET_LOW, r3, CMD_SET_LOW
-    QBEQ    SET_HIGH, r3, CMD_SET_HIGH
-    QBEQ    GET, r3, CMD_GET
-    QBEQ    WAIT, r3, CMD_WAIT
+    QBEQ    SET_DIR_OUT, r3, ACT_SET_DIR_OUT
+    QBEQ    SET_DIR_IN, r3, ACT_SET_DIR_IN
+    QBEQ    SET_LOW, r3, ACT_SET_LOW
+    QBEQ    SET_HIGH, r3, ACT_SET_HIGH
+    QBEQ    GET, r3, ACT_GET
+    QBEQ    WAIT, r3, ACT_WAIT
+    SBCO    r3, C28, 0, 4
     QBA     QUIT
   post_action:
     ADD     r1, r1, 12      // Points to next action
     SUB     r2, r2, 1
     QBNE    switch_action, r2, 0 // While there is still an action to read
     SBCO    r2, C28, 0, 4   // No more command: it was just completed
-    MOV     r31.b0, INTERRUPT_VALID | PRU0_ARM_INTERRUPT // Tells ARM action chain is treated
+    MOV     r1, P_ACTION
+    SBCO    r2, C28, r1, 4  // Resets nAction too
+    MOV     r31.b0, INTC_VALID_STROBE | PRU0_ARM_INTERRUPT // Tells ARM action chain is treated
     QBA     MAIN            // Wait until next action
 
 // Elementary functions
@@ -74,20 +87,20 @@ SET_DIR_IN:
     QBA     post_action
 SET_LOW:
     MOV     r7, GPIO_CLEARDATAOUT
-    SBBO    r5, r4, r7      // Just set the bit in the CLEARDATAOUT register
+    SBBO    r5, r4, r7, 4   // Just set the bit in the CLEARDATAOUT register
     QBA     post_action
 SET_HIGH:
     MOV     r7, GPIO_SETDATAOUT
-    SBBO    r5, r4, r7      // Just set the bit in the SETDATAOUT register
+    SBBO    r5, r4, r7, 4   // Just set the bit in the SETDATAOUT register
     QBA     post_action
 GET:
     MOV     r7, GPIO_DATAIN // Corresponding bit is the value
     LBBO    r6, r4, r7, 4   // Get DATAIN
     AND     r6, r6, r5      // Now, if value, r6 is not null
-    SBCO    r6, r1, 4, 4    // Writes instead of action.GPIO_base. Can test multiple bits at once...
+    SBBO    r6, r1, 4, 4    // Writes instead of action.GPIO_base. Can test multiple bits at once...
     QBA     post_action
 WAIT:
-    QBLT    post_action, r4, 10 // WAIT cannot be accurate between 0 and 90 nanosec
+    QBGT    post_action, r4, 10 // WAIT cannot be accurate between 0 and 90 nanosec
     SUB     r4, r4, 9       // Compensate previous commands and this one
   wait_sub:
     SUB     r4, r4, 1       // Counts down
