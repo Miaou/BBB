@@ -133,6 +133,7 @@ int write_bit(OneWire* onewire, char bit)
     }
     WAIT_NANO(tBegins, tEnd, 75000);
 
+    // FIXME: ERR_MISSED_TSLOT can be reached here too, when writing 0, and lead to a pulse_init...
     iolib_setdir(onewire->port, onewire->pin, BBBIO_DIR_IN);
     WAIT_NANO(tEnd, tBegins, 10000); // Leave it 10 instead of just 1, to be sure !
     nNanosec = nanodiff(&tBegins, &tEnd);
@@ -242,10 +243,10 @@ LIBDALLAS_API int dallas_rom_read(OneWire* onewire, unsigned char *bRom)
     //unsigned char bRom[8];
     int i, status;
 
-    if(! pulseInit(onewire))
-        return ERR_NO_PRESENCE;
     if(! bRom)
         return ERR_INVALID_ARGS;
+    if(! pulseInit(onewire))
+        return ERR_NO_PRESENCE;
 
     // Send a 0x33
     write_byte(onewire, READ_ROM);
@@ -356,10 +357,20 @@ LIBDALLAS_API int dallas_rom_search(OneWire* onewire, SEARCH_CALLBACK found_rom)
 
 LIBDALLAS_API int dallas_rom_skip(OneWire* onewire, unsigned char operation)
 {
+    // FIXME: dallas_rom_read does the pulseInit as well as rom_search,
+    //  but rom_skip does not, neither does rom_match.
+    //  Because search rom must do the pulseInit, I think it is better to add pulseInit().
+    //  Choose a model and keep it.
+    
     //send a 0xCC
     write_byte(onewire, SKIP_ROM);
     write_byte(onewire, operation);
-
+    
+    // FIXME: I'm "ok" with that, but I think it is not very clean.
+    //  The user shall do a ROM command first and then a FUNC command,
+    //  but only if ROM command is not rom_skip...
+    //  Maybe someone will want to convert T not on all sensors because it draws too much current...
+    // Choose to modify this or not. Mail me your decision.
     if(operation == CONVERT_T || operation == COPY_SCRATCHPAD) //User be careful about pullup
     {
         struct timespec tBegins, tEnd;
