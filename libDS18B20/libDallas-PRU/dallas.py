@@ -363,6 +363,25 @@ def DallasFuncReadPowerSupply(wire):
 
 
 
+if __name__=='__main__':
+    from binascii import hexlify
+    owire = OneWire(8, 13, pruicss)
+    # Test Read rom / Search rom
+    print('Found device: {}'.format(DallasRomRead(wire)))
+    print('Begin search')
+    sRom = set()
+    def newRom(sRom, rom):
+        sRom.add(rom)
+        print(hexlify(rom))
+    DallasRomSearch(wire, newRom)
+    # TODO: reprendre le CRC
+    # Test Match Rom + read scratch
+    for rom in sRom:
+        DallasRomMatch(wire, rom)
+        DallasFuncScratchpadRead(wire)
+    # TODO: test le read Power supply pour les DS18B20-P et pour les autres...
+
+
 
 
 
