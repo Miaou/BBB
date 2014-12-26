@@ -143,15 +143,11 @@ FUNC_SCRATCHPAD_copy    = 0x48
 FUNC_RECALL_E           = 0xB8
 FUNC_READ_POWER_SUPPLY  = 0xB4
 
-# Error codes returned by low-level functions
-ERR_OK              = 0
-ERR_FAILED          = 0xFFFFFFFF
-#ERR_NO_CLOCK        = 0xFFFFFFFE
-#ERR_MISSED_TSLOT    = 0xFFFFFFFD
-ERR_NO_PRESENCE     = 0xFFFFFFFC
-ERR_INVALID_ARGS    = 0xFFFFFFFB
-ERR_SEARCH_PARTIAL  = 0xFFFFFFFA
-
+## Error codes returned by low-level functions
+# Let's try the Easier to Ask for Forgiveness than Permission...
+# Errors raised by low-level IO
+class NoResponseError(Exception): pass
+class SearchPartialError(Exception): pass
 
 
 # Now the signal timing sequences, on which libdallas is built.
@@ -174,7 +170,8 @@ def PulseInit(wire):
              ActWait(480000-67000)]
     maskPres, = ExecuteActions(wire.GetPRU(), lActs)
     # maskPres should be 1<<mask_of_pin if not null
-    return maskPres != 0
+    if not maksPres:
+        raise NoResponseError('No DS18B20x answered the reset pulse.')
 
 
 
@@ -229,8 +226,7 @@ def ReadByte(wire):
 # (ROM commands do their own PulseInit and might return ERR_NO_PRESENCE)
 
 def DallasRomRead(wire):
-    if not pulseInit(wire):
-        return ERR_NO_PRESENCE
+    PulseInit(wire)
     WriteByte(wire, ROM_READ)
     
     lB = bytearray()
@@ -246,13 +242,11 @@ def DallasRomSearch(wire, FoundRom):
     #  So the algorithm begins knowing nothing, and this is the trace of lenght 0
     lToRedo = [ [] ]
     while lToRedo:
-        if not PulseInit(wire):
-            return ERR_NO_PRESENCE
+        PulseInit(wire)
         WriteByte(wire, ROM_SEARCH)
         
         currTrace = lToRedo.pop()
         for bi in currTrace:
-            # We don't check errors, as we are re-doing an already known path. Be confident.
             ReadBit(wire)
             ReadBit(wire)
             WriteBit(wire)
@@ -275,7 +269,7 @@ def DallasRomSearch(wire, FoundRom):
                 altTrace.append(1)
                 lToRedo.append( altTrace )
             else:
-                return ERR_SEARCH_PARTIAL # FIXME: unify error-code with libDallas-C
+                raise SearchPartialError('Both bits were set: no one is responding anymore')
         
         # Convert trace to bytes()
         lBy = []
@@ -285,20 +279,17 @@ def DallasRomSearch(wire, FoundRom):
                 by += (currTrace[i*8+j]<<j)
             lBy.append(by)
         FoundRom(bytes(lBy))
-    return ERR_OK
 
 
 def DallasRomSkip(wire):
-    if not pulseInit(wire):
-        return ERR_NO_PRESENCE
+    PulseInit(wire)
     WriteByte(wire, ROM_SKIP)
 
 
 def DallasRomMatch(wire, rom):
     '''rom must be a list(integer) or a bytes() or compatible
     LSB must be first (same order as read)'''
-    if not pulseInit(wire):
-        return ERR_NO_PRESENCE
+    PulseInit(wire)
     WriteByte(wire, ROM_MATCH)
     for by in rom:
         WriteByte(wire, by)
