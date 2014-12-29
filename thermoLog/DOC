@@ -1,0 +1,32 @@
+Les infos sur le logger.
+
+Les Bases de Données. Intérêts :
+- persistence : pas de problèmes de pertes dues à des coupures
+- cohérence : si la coupure intervient pendant l'écriture, pas de problème de corruption (magie)
+- rangement : on peut ranger toutes les expériences dans la même base,
+  ce qui évite les nommages douteux de fichiers résultats, du style "result_exp2.csv"
+- API existant pour le stockage/rappel des données
+Inconvénients :
+- encore un nouveau langage (le SQL, Standard Query Language)
+- il faut réfléchier à comment ranger les données pour les utilisations qu'on veut en faire
+- les données sont stoquées sous forme binaire, et Git n'aime pas trop...
+
+Les bases de données sont souvent utiliser avec un serveur qui gère l'interaction avec la base de données,
+ et des clients qui viennent s'y connecter et exécuter des requêtes. Ceci permet de gérer les problèmes d'accès
+ au fichier de la base de données, d'ordre d'éxécution des requêtes, d'optimisation...
+SQLite a l'avantage qu'on se passe de serveur, c'est donc plus simple à mettre en place. Le prix à payer est la
+ "mauvaise" gestion des accès simultannées. Je ne pense pas que ce soit un problème pour nous.
+Python intègre un API SQLite3 dans ses modules de base (cf. sqlite3 dans la donc Python)
+
+J'ai (PAB) choisi d'imposer l'utilisation des BdD pour les avantages (très forts) cités plus haut.
+On utilisera un DAO (Database Access Object).
+
+
+Quelques liens utiles :
+- Le tuto SQLite de ZetCode pour Python : http://zetcode.com/db/sqlitepythontutorial/
+- La notion de DAO : http://en.wikipedia.org/wiki/Data_access_object
+- Utiliser Git pour versionner les DB (mais attention, c'est pas efficace, juste un peu pratique) : http://ongardie.net/blog/sqlite-in-git/
+
+
+
+L'organisation de la base de données du logger : cf dao.py, et DB-UML

@@ -1,0 +1,40 @@
+En résumé, voici le diagramme de classe représentant la base de données.
+Le concept derrière Wave : avoir une "vague" de mesures regroupées, appartenant à la même expérience.
+
+Les clefs primaires n'apparaissent pas.
+- Sensor : ID. On pourrait avoir ID, partNumb et HardID en UNIQUE,
+   mais pas en primary : il faut pouvoir référencer un sensor par son ID seulement
+- Wave : ID.
+- SensorComment : associé à un sensor pour une vague, donc SensorID, WaveID
+- Measure : WaveID, iTime, SensorID
+
+                            +-------------------+                                 
+                            |                   |                                 
+                            |      Sensors      |                                 
+                            |                   |                                 
+                            +-------------------+                                 
+                            |                   |                                 
+                     +------+ ID                +-------+                         
+                     |    1 | bPartNumber       | 0..*  |                         
+                     |      | bHardID           |       |                         
+                     |      | exprRawToReadable |       |                         
+                     |      |                   |       |                         
++------------+       |      +-------------------+       |       +----------------+
+|            |       |                                  |       |                |
+|  Measures  |       |                                  |       | SensorComments |
+|            +-------+                                  |       |                |
++------------+ 0..*                                     |       +----------------+
+|            |                                          | - - - |                |
+| WaveID     |                                          |       | SensorID       |
+| iTimeStamp +-------+                                  |       | WaveID         |
+| SensorID   | 0..*  |        +---------------+         |       | sDescPlacement |
+| iRawValue  |       |        |               |         |       | sPlotLegend    |
+|            |       |        |     Waves     |         |       |                |
++------------+       |        |               |         |       +----------------+
+                     |        +---------------+         |                         
+                     |        |               |         |                         
+                     |        | ID            |         |                         
+                     +--------+ iTimeStarted  +---------+                         
+                            1 | sComment      | 0..*                              
+                              |               |                                   
+                              +---------------+                                   

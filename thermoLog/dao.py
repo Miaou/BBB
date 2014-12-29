@@ -1,35 +1,40 @@
 # -*- coding: utf-8 -*-
-# Python2/3 compatible
+# Should be Python2/3 compatible
 
-# Index-based access functions are ... bad. It relies on the fact that a given row in the database is
-#  always accessed the same, so that it's index is always the same...
 
-# The problem is that I did not foresee the fact that I would have variable (enlarging) hardware...
+# The problem is that I did not foresee the fact that I would have variable hardware (new sensors)...
 #  ... it is rather limited to do things with fixed number of sensors...
 
-# So it should be moved to a greater structure, where each sensor could have a table
+# So it should be moved to a greater structure, where each sensor could have a table...
 # There would be a table (waveID, measureID, time), multiple tables (measureID, rawMeasure)
 #  and a table (waveID, waveName) and a table (sensorName, tableName)...
 # Maybe instead of sensors table, a generic (sensorID, measureID, rawMeasure) with a table (sensorID, sensorType, sensorName, exprRawToCelsius)
 #  but be careful when being too generic...
 
-# Note about naming graphs: may not be such a good idea... maybe add a more "comment" system rather than referencing by name...
+# Sidenote about naming graphs: may not be such a good idea... maybe add a more "comment" system rather than referencing by name...
 
+# The debate pro/con a single table having all measures is difficult.
+# There could be a table per sensor, which leads to small and efficient tables (this is partitionning)
+# Here are representative debates:
 # http://stackoverflow.com/questions/22188846/sqlite-mysql-big-table-vs-multiple-small-tables
-# -> small tables is more "normalized" (only one version of the thruth), and more optimized for insert/access
+# http://sqlite.1065341.n5.nabble.com/Single-large-table-vs-several-smaller-tables-td78495.html
+# http://dba.stackexchange.com/questions/56610/sqlite-design-better-to-have-many-tables-with-few-columns-or-few-tables-with-ma
+# -> small tables is usually more "normalized" (only one version of the thruth), and more optimized for insert/access
 # -> a large table avoids joins, but ... how to say that... they will be rare.
+# -> small tables may be more confortable to work with (because it may be the way we imagine the data)
+# -> a table is too large when it as several giga rows...
 
 # So, the proposed scheme fot the tables:
-# Sensors: sensorID PRIMARY, sensorName, exprRawToCelsius
-# The debate pro/con a table per sensor is vivid. Cons: difficult naming and tedious API
-# Waves: waveID PRIMARY, timeStarted INTEGER, comment (long text or nothing, not name, name is tedious and difficult to keep short)
+# Sensors: sensorID PRIMARY, sensorPartNumber (manufacturing part number, e.g. "DS18B20"), sensorHardwareID BLOB (what we want if there is no HW id), exprRawToReadable
+#  Sensors can be output too: command value of the fan speed for instance.
+# Waves: waveID PRIMARY, timeStarted INTEGER, comment (long text (descr of the experiment) or nothing, not name, name is tedious and difficult to keep short)
 #  Say, the waves IDs will now be AUTOINCREMENT instead of "random" integer: it will enforce the listing, even if it breaks multi-databaseS-wide indexing...
-# SensorComment: sensorID FOREIGN, waveID FOREIGN, txtDescPlac, txtPlotLegend
+# SensorComment: sensorID FOREIGN, waveID FOREIGN, txtDescPlacement, txtPlotLegend
 # Measures: waveID FOREIGN, time INTEGER (in secs), sensorID FOREIGN, rawValue INTEGER, PRIMARY KEY (waveID, time, sensorID)
 
 # To do new measures: acquire a new waveID, optionnally leave a comment, select existing sensorsIDs, insert measures
 
-# exprRawToCelsius: an expression to be evaluated for each sensor to convert raw data to celsius,
+# exprRawToReadable: an expression to be evaluated for each sensor to convert raw data to readable data (temperature, humidity, fan speed, ...),
 #  should have only one local variable,
 #  should be eval()-safe, so check it out, because it can be a source of code injection.
 #  should tolerate the use of things like struct (?) maybe not, it would allow open(). So only struct ?
@@ -38,7 +43,7 @@
 
 import sqlite3
 import time
-pylab = None
+pylab = None # These are representations, they may (should) move in another file
 np = None
 gnuplot = None
 import subprocess # gnuplot
@@ -54,25 +59,79 @@ printme = lambda *args,**kwargs: kwargs.get('file',sys.stdout).write(kwargs.get(
 
 
 sDB='thermoLog.db'
+exprRawToCelsiusMLK = 'raw*.02-273.15'
 class DAO(object):
-    #RAW_TO_CELSIUS = lambda i:i*.02-273.15 # Python3-style
-    @staticmethod
-    def RAW_TO_CELSIUS(i):
-        return i*.02-273.15
-
-    def __init__(self, sDB, curWave=None):
+    def __init__(self, sDB):
         self.sDB = sDB
         self.db = sqlite3.connect(self.sDB)
-        self.db.execute('PRAGMA foreign_keys=1')
-        if curWave == None:
-            curWave=int(time.time())
-        self.curWave = curWave
+        self.db.execute('PRAGMA foreign_keys=1') # Enables the "foreign key" checking
+        self.curWaveID = None
         with self.db as db:
-            db.execute('CREATE TABLE IF NOT EXISTS logThermo (wave INTEGER, time INTEGER,\
-                        iTempAmb INTEGER, iTempObj INTEGER, PRIMARY KEY(wave,time));')
-            db.execute('CREATE TABLE IF NOT EXISTS waveNames (wave INTEGER, name TEXT PRIMARY KEY);')#,\
-                        #FOREIGN KEY (wave) REFERENCES logThermo(wave));') # Design flaw: the foreign key must match a primary key (!!!) ("lol")
+            db.execute('CREATE TABLE IF NOT EXISTS Sensors (ID INTEGER PRIMARY KEY AUTOINCREMENT,\
+                        bPartNumber BLOB NOT NULL, bHardID BLOB, exprRawToReadable TEXT)')
+            db.execute('CREATE TABLE IF NOT EXISTS Waves (ID INTEGER PRIMARY KEY AUTOINCREMENT,\
+                        iTimeStarted INTEGER NOT NULL, sComment TEXT')
+            db.execute('CREATE TABLE IF NOT EXISTS SensorComments (SensorID INTEGER, WaveID INTEGER,\
+                        sDescPlacement TEXT NOT NULL, sPlotLegend TEXT,\
+                        FOREIGN KEY (SensorID) REFERENCES Sensors(ID),\
+                        FOREIGN KEY (WaveID) REFERENCES Waves(ID))')
+            db.execute('CREATE TABLE IF NOT EXISTS Measures (WaveID INTEGER, iTimeStamp INTEGER NOT NULL, SensorID INTEGER,\
+                        iRawValue INTEGER,\
+                        FOREIGN KEY (WaveID) REFERENCES Waves(ID),\
+                        FOREIGN KEY (SensorID) REFERENCES Sensors(ID))')
+    # -----
+    #  API
+    # -----
+    # (to be completed)
+    def newSensor(self, bPartNumber, bHardID=b'', exprRawToReadable=''):
+        pass
+    def iterSensors(self):
+        'Returns an iterator on sensors\n(list(dao.iterSensors()) to obtain a list)'
+        for tup in self.db.execute('SELECT * FROM Sensors'):
+            yield tup
+    def displaySensors(self):
+        'Pretty print sensors list'
+        # Print will be made with fixed-width column to display things nicely.
+        for ID, bPartN, bHardID, expr in self.iterSensors():
+            print(ID, bPartN, bHardID, expr)
+    def commentSensor(self, sensorID, sDescPlacement, sPlotLegend='', waveID=None):
+        if not self.curWaveID and not waveID:
+            raise ValueError('Could not guess which wave to comment')
 
+    def newWave(self, iTimeStamp=None, sComment=''):
+        if not iTimeStamp:
+            iTimeStamp = int(time.time())
+        with self.db as db:
+            db.execute('INSERT INTO Waves(iTimeStarted, sComment) VALUES(?,?)', (iTimeStamp, sComment))
+        self.curWaveID = self.db.insert_id() # To be tested.
+    def commentWave(self, waveID=None):
+        if not self.curWaveID and not waveID:
+            raise ValueError('Could not guess which wave to comment')
+    def iterWaves(self):
+        pass
+    def displayWaves(self):
+        pass
+
+    def newMeasure(self, sensorID, iRawValue, iTimeStamp=None, waveID=None):
+        if not self.curWaveID and not waveID:
+            raise ValueError('No current wave, did you forget to dao.newWave()?')
+        if not waveID:
+            waveID = self.waveID
+        if not iTimeStamp:
+            iTimeStamp = int(time.time())
+        with self.db as db:
+            db.execute('INSERT INTO Measures VALUES(?,?,?,?)', (waveID, iTimeStamp, sensorID, iRawValue))
+    def iterMeasures(self, sensorID, waveID):
+        'Iterates (iTimeStamp, fReadableValue) over Measures'
+        with self.db as db:
+            exprRaw, = db.execute('SELECT exprRawToReadable FROM Sensors WHERE SensorID=?', (sensorID,))
+            for t,raw in db.execute('SELECT iTimeStamp,iRawValue FROM Measures WHERE WaveID=? AND SensorID=?', (waveID, sensorID)):
+                yield (t, eval(exprRaw, {}, {'raw':raw}))
+    
+    # ---------
+    #  old API
+    # ---------
+    # Still here to take some inspiration. Will be deleted.
     def newEntry(self, fTime, iRawTempA, iRawTempO):
         with self.db as db:
             db.execute('INSERT INTO logThermo VALUES(?,?,?,?)', (self.curWave, int(fTime), iRawTempA, iRawTempO))
