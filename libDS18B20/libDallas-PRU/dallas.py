@@ -1,4 +1,4 @@
-#!/bin/usr/python3
+#!/usr/bin/python3
 
 # This is the libDallas, PRU edition...
 # This was built because the C-version is not executed realtime.
@@ -123,6 +123,10 @@ def ExecuteActions(prussmem, lActions):
     # Waits for completion
     pypruss.wait_for_event(pypruss.PRU_EVTOUT_0)
     pypruss.clear_event(pypruss.PRU_EVTOUT_0, pypruss.PRU0_ARM_INTERRUPT)
+    # PRUSS has finished his work, but his mem may not be synced with Linux' mem
+    #mem_fd.flush() does not work. Why?
+    # So we watch the COMMAND status in prussmem[SHARED] and wait until it is back to COMMAND_STDBY
+    while prussmem[SHARED] != 0: pass # This can take "a lot" of time
     return ReadActions(prussmem, lActions)
 
 
@@ -171,7 +175,7 @@ def PulseInit(wire):
              ActWait(480000-67000)]
     maskPres, = ExecuteActions(wire.GetPRU(), lActs)
     # maskPres should be 1<<mask_of_pin if not null
-    if not maksPres:
+    if maskPres:
         raise NoResponseError('No DS18B20x answered the reset pulse.')
 
 
@@ -210,15 +214,15 @@ def ReadBit(wire):
 def WriteByte(wire, bByte):
     'bByte can be an int() or a bytes()'
     assert isinstance(bByte, (bytes,int))
-    by = bByte if isinstance(int) else bByte[0]
+    by = bByte if isinstance(bByte, int) else bByte[0]
     for i in range(8):
-        WriteBit(wire, (by>>i))
+        WriteBit(wire, ((by>>i)&1))
 
 def ReadByte(wire):
     'Returns an int'
     by = 0
     for i in range(8):
-        by += (ReadByte(wire)<<i)
+        by += (ReadBit(wire)<<i)
     return by
 
 
@@ -258,7 +262,7 @@ def DallasRomSearch(wire, FoundRom):
                 currTrace.append(0)
                 WriteBit(wire, 0)
             elif bit0 and (not bit1):
-                currTrace.eppend(1)
+                currTrace.append(1)
                 WriteBit(wire, 1)
             elif (not bit0) and (not bit1):
                 # Creates an alternative trace.
@@ -326,7 +330,7 @@ def DallasFuncConvertT(wire):
 
 def DallasFuncScratchpadRead(wire):
     WriteByte(wire, FUNC_SCRATCHPAD_READ)
-    return bytes(ReadByte(wire)[0] for i in range(9))
+    return bytes(ReadByte(wire) for i in range(9))
 
 def DallasFuncScratchpadWrite(wire, buf):
     '''Writes Alarm temps high and low and configuration
@@ -357,20 +361,23 @@ def DallasFuncReadPowerSupply(wire):
 
 if __name__=='__main__':
     from binascii import hexlify
-    owire = OneWire(9, 13, 9,14, pruicss)
+    owire = OneWire(9,13, 9,14, pruicss)
     # Test Read rom / Search rom
-    print('Found device: {}'.format(DallasRomRead(wire)))
+    rom = DallasRomRead(owire)
+    print('Found device: {}'.format(hexlify(rom)))
     print('Begin search')
     sRom = set()
     def newRom(sRom, rom):
         sRom.add(rom)
         print(hexlify(rom))
-    DallasRomSearch(wire, newRom)
+    DallasRomSearch(owire, (lambda rom:newRom(sRom,rom)))
+    print('End search, read scratchpads')
     # TODO: reprendre le CRC
     # Test Match Rom + read scratch
+    dScratch = {}
     for rom in sRom:
-        DallasRomMatch(wire, rom)
-        DallasFuncScratchpadRead(wire)
+        DallasRomMatch(owire, rom)
+        dScratch[rom] = DallasFuncScratchpadRead(owire)
     # TODO: test le read Power supply pour les DS18B20-P et pour les autres...
 
 

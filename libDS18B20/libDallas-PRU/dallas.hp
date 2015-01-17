@@ -100,7 +100,7 @@
 #define ACT_WAIT        6
 //#define ACT_QUIT        7
 
-// Action offset, number of possible actions, sizeof(ACTION)
+// Action offset (in RAM_SHARED), number of possible actions, sizeof(ACTION)
 #define P_ACTION        0x0100
 #define N_ACTION        0x0200
 #define S_ACTION        0x12

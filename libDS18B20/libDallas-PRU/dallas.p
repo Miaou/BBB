@@ -46,13 +46,13 @@ MAIN:
     SBCO    r1, C28, 0, 4
     QBNE    MAIN, r0, COMMAND_START
     // Parse action tree
-    MOV     r1, RAM_BOTH
     MOV     r1, P_ACTION    // Action offset
     LBCO    r2, C28, r1, 4  // Number of remaining actions (should be below N_ACTION)
     ADD     r1, r1, 4
   switch_action:
     LBCO    r3, C28, r1, 12 // r3=Action, r4=GPIO base, r5=GPIO mask
-    // r1 must points to current location, so that GET can work)
+    // r1 must points to current location, so that GET can work
+    // r1,r2 must not be altered, so that post_action can work
     QBEQ    SET_DIR_OUT, r3, ACT_SET_DIR_OUT
     QBEQ    SET_DIR_IN, r3, ACT_SET_DIR_IN
     QBEQ    SET_LOW, r3, ACT_SET_LOW
@@ -96,8 +96,8 @@ SET_HIGH:
 GET:
     MOV     r7, GPIO_DATAIN // Corresponding bit is the value
     LBBO    r6, r4, r7, 4   // Get DATAIN
-    AND     r6, r6, r5      // Now, if value, r6 is not null
-    SBBO    r6, r1, 4, 4    // Writes instead of action.GPIO_base. Can test multiple bits at once...
+    AND     r4, r6, r5      // Now, if value, r4 is not null
+    SBCO    r3, C28, r1, 8  // Writes back r3=Action, r4=not null if readbit. Can test multiple bits at once...
     QBA     post_action
 WAIT:
     QBGT    post_action, r4, 10 // WAIT cannot be accurate between 0 and 90 nanosec
