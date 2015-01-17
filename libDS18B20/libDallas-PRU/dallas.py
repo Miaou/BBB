@@ -13,11 +13,21 @@
 # So maybe we will build an identical Python-interface to compare...
 
 
-# FIXME: this paradigm (returning an error-code instead
-#  of a value or using a callback) is very C-like.
+# Almost-fixed: Returning an error-code instead of a value, or using callbacks, is very C-like.
 #  We should raise exceptions, even if I am not confortable with putting try: except: everywhere...
+#  And maybe return a list instead of calling callbacks...
 # See: http://www.jeffknupp.com/blog/2013/02/06/write-cleaner-python-use-exceptions/
 # And: http://stackoverflow.com/questions/1630706/best-practice-in-python-for-return-value-on-error-vs-success
+
+
+# FIXME: the Dallas API is for now very C-like: a bunch of functions in the
+#  global namespace, using a struct as the first argument...
+# So current "OneWire" is instead "OneWireHardwareInterface", and a true OneWire should be created.
+
+# Then think about fault tolerance to create more Exceptions, and set behavior of
+#  functions such as OneWire.ReadTemperature(): should it print the CRC error, leave it?
+#  Be able to continue and raise it again when reads are all done?
+
 
 
 import struct
@@ -25,6 +35,8 @@ import pypruss
 import mmap
 
 
+
+# This is low-level stuff, it maybe should be in OneWireHWIface... Maybe.
 
 # Get PRU's address (shouldn't it be hardware dependent? Is there an equivalent for GPIOs?)
 #  and mmap it
@@ -58,6 +70,7 @@ class OneWire:
         self.bMappedPRU = bMappedPRU
         self.port, self.pin, self.pullup_port, self.pullup_pin = port, pin, pullup_port, pullup_pin
         self._keepalive = OneWire # Avoids that the OneWire class is deleted before its instances...
+        self.dSensors = {}
     def __del__(self):
         global OneWire # Hack: sometimes OneWire is deleted before self
         if not OneWire:
@@ -72,6 +85,61 @@ class OneWire:
     def GetPRU(self):
         return self.bMappedPRU
 
+    # --------------------------
+    # Here is the "true" OneWire
+    def CreateSensor(self, rom):
+        if rom in self.dSensors:
+            return
+        self.dSensors[rom] = Sensor(rom, self)
+    #def ReadSoleRom(self)
+    def SearchMoreRoms(self):
+        DallasRomSearch(self, lambda rom:self.CreateSensor(rom))
+    def PrintSensors(self):
+        "Display sensor list and last temperatures"
+        print('Sensor list')
+        for rom in self.dSensors:
+            print(' - {}: {}°C'.format(hexlify(rom), self.dSensors[rom].GetTemperature()))
+    def ConvertTemperatures(self):
+        "Starts the temperature conversion for all sensors (skip rom)"
+        DallasRomSkip(self)
+    def ReadTemperatures(self):
+        "Reads the temperature for all known sensors (wrapper for Sensor.ReadTemperature)"
+        for sens in self.dSensors.values():
+            sens.ReadTemperature()
+
+
+class Sensor:
+    def CheckCRC(buf):
+        poly = 0x8C
+        s = 0
+        for by in buf:
+            for i in range(8):
+                r =  (s&0x01)
+                f = (by&0x01)
+                by >>= 1
+                xor = poly if (r^f) else 0
+                s = ((s>>1) ^ xor)&0xFF
+        return s==0
+    def __init__(self, rom, wire):
+        "rom should be a bytes (or any iterable iterating on 8-ints)"
+        assert Sensor.CheckCRC(rom), "CRC on serial number failed"
+        self.rom = rom
+        self.wire = wire
+        self.lastTemp = None
+
+    def ConvertTemperature(self):
+        "Can be skiped if a ConvertTemperature() is done on the OneWire instead"
+        DallasRomMatch(self.wire, self.rom)
+    def ReadTemperature(self):
+        "Reads the scratchpad and returns temperature"
+        buf = DallasFuncScratchpadRead(self.wire)
+        assert Sensor.CheckCRC(buf), "CRC on read scratchpad failed"
+        fTemp, = struct.unpack('<h', buf[:2])/16
+        self.lastTemp = fTemp
+        return fTemp
+    def GetTemperature(self):
+        "Returns the last result of ReadTemperature()"
+        return self.lastTemp
 
 
 # ----------
@@ -367,29 +435,11 @@ def DallasFuncReadPowerSupply(wire):
 if __name__=='__main__':
     from binascii import hexlify
     owire = OneWire(9,13, 9,14, pruicss)
-    # Test Read rom / Search rom
-    rom = DallasRomRead(owire)
-    print('Found device: {}'.format(hexlify(rom)))
-    print('Begin search')
-    sRom = set()
-    def newRom(sRom, rom):
-        sRom.add(rom)
-        print(hexlify(rom))
-    DallasRomSearch(owire, (lambda rom:newRom(sRom,rom)))
-    print('End search, read scratchpads')
-    # TODO: reprendre le CRC
-    # Test Match Rom + read scratch
-    dScratch = {}
-    for rom in sRom:
-        DallasRomMatch(owire, rom)
-        dScratch[rom] = DallasFuncScratchpadRead(owire)
-    # Test ConvertT
-    print('ConvertT')
-    DallasRomRead(owire)
-    DallasFuncConvertT(owire)
-    DallasRomRead(owire)
-    buf = DallasFuncScratchpadRead(owire)
-    print('Temp: {}'.format( struct.unpack('<h', buf[:2])[0]/16. ))
+    owire.SearchMoreRoms()
+    print('Found {} sensors'.format(len(owire.dSensors)))
+    owire.ConvertTemperatures()
+    owire.ReadTemperatures()
+    owire.PrintSensors()
     # TODO: test le read Power supply pour les DS18B20-P et pour les autres...
 
 
