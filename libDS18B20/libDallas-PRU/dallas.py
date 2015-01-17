@@ -57,7 +57,11 @@ class OneWire:
         self.bIsBusy = False # May help in the future
         self.bMappedPRU = bMappedPRU
         self.port, self.pin, self.pullup_port, self.pullup_pin = port, pin, pullup_port, pullup_pin
+        self._keepalive = OneWire # Avoids that the OneWire class is deleted before its instances...
     def __del__(self):
+        global OneWire # Hack: sometimes OneWire is deleted before self
+        if not OneWire:
+            OneWire = self._keepalive
         OneWire.nInstances -= 1
         if not OneWire.nInstances:
             print('Exiting PRU program')
@@ -120,13 +124,14 @@ def ExecuteActions(prussmem, lActions):
     WriteActions(prussmem, lActions)
     # Makes the PRU treat actions
     prussmem[SHARED] = 1 # COMMAND_START
-    # Waits for completion
+    # Waits for completion.
     pypruss.wait_for_event(pypruss.PRU_EVTOUT_0)
     pypruss.clear_event(pypruss.PRU_EVTOUT_0, pypruss.PRU0_ARM_INTERRUPT)
-    # PRUSS has finished his work, but his mem may not be synced with Linux' mem
-    #mem_fd.flush() does not work. Why?
-    # So we watch the COMMAND status in prussmem[SHARED] and wait until it is back to COMMAND_STDBY
-    while prussmem[SHARED] != 0: pass # This can take "a lot" of time
+    # I don't know why we have to wait and clear 2 times...
+    # I thought that there was a delay between the PRU signaled the interrupt and
+    #  and the Linux updating the shared mem, but no, you have to wait for event twice...
+    pypruss.wait_for_event(pypruss.PRU_EVTOUT_0)
+    pypruss.clear_event(pypruss.PRU_EVTOUT_0, pypruss.PRU0_ARM_INTERRUPT)
     return ReadActions(prussmem, lActions)
 
 
@@ -378,7 +383,15 @@ if __name__=='__main__':
     for rom in sRom:
         DallasRomMatch(owire, rom)
         dScratch[rom] = DallasFuncScratchpadRead(owire)
+    # Test ConvertT
+    print('ConvertT')
+    DallasRomRead(owire)
+    DallasFuncConvertT(owire)
+    DallasRomRead(owire)
+    buf = DallasFuncScratchpadRead(owire)
+    print('Temp: {}'.format( struct.unpack('<h', buf[:2])[0]/16. ))
     # TODO: test le read Power supply pour les DS18B20-P et pour les autres...
+
 
 
 
