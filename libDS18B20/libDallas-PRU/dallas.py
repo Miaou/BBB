@@ -45,7 +45,7 @@ ACTION  = 0x010100 # SHARED + 0x100
 
 class OneWire:
     nInstances = 0
-    def __init__(self, port, pin, bMappedPRU):
+    def __init__(self, port, pin, pullup_port, pullup_pin, bMappedPRU):
         if not OneWire.nInstances:
             # Init PRU
             print('Loading program into PRU')
@@ -56,6 +56,7 @@ class OneWire:
         OneWire.nInstances += 1
         self.bIsBusy = False # May help in the future
         self.bMappedPRU = bMappedPRU
+        self.port, self.pin, self.pullup_port, self.pullup_pin = port, pin, pullup_port, pullup_pin
     def __del__(self):
         OneWire.nInstances -= 1
         if not OneWire.nInstances:
@@ -63,7 +64,7 @@ class OneWire:
             pypruss.pru_disable(0)
             pypruss.exit()
     def GetPins(self):
-        return self.port, self.pin, self.pullup_port, pullup_pin
+        return self.port, self.pin, self.pullup_port, self.pullup_pin
     def GetPRU(self):
         return self.bMappedPRU
 
@@ -356,7 +357,7 @@ def DallasFuncReadPowerSupply(wire):
 
 if __name__=='__main__':
     from binascii import hexlify
-    owire = OneWire(8, 13, pruicss)
+    owire = OneWire(9, 13, 9,14, pruicss)
     # Test Read rom / Search rom
     print('Found device: {}'.format(DallasRomRead(wire)))
     print('Begin search')
