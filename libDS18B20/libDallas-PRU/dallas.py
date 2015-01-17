@@ -102,6 +102,7 @@ class OneWire:
     def ConvertTemperatures(self):
         "Starts the temperature conversion for all sensors (skip rom)"
         DallasRomSkip(self)
+        DallasFuncConvertT(self)
     def ReadTemperatures(self):
         "Reads the temperature for all known sensors (wrapper for Sensor.ReadTemperature)"
         for sens in self.dSensors.values():
@@ -130,11 +131,14 @@ class Sensor:
     def ConvertTemperature(self):
         "Can be skiped if a ConvertTemperature() is done on the OneWire instead"
         DallasRomMatch(self.wire, self.rom)
+        DallasFuncConvertT(self.wire)
     def ReadTemperature(self):
         "Reads the scratchpad and returns temperature"
+        DallasRomMatch(self.wire, self.rom)
         buf = DallasFuncScratchpadRead(self.wire)
-        assert Sensor.CheckCRC(buf), "CRC on read scratchpad failed"
-        fTemp, = struct.unpack('<h', buf[:2])/16
+        assert Sensor.CheckCRC(buf), "CRC on read scratchpad failed (was {})".format(hexlify(buf))
+        iTemp, = struct.unpack('<h', buf[:2])
+        fTemp = iTemp/16.
         self.lastTemp = fTemp
         return fTemp
     def GetTemperature(self):
@@ -327,7 +331,7 @@ def DallasRomSearch(wire, FoundRom):
         for bi in currTrace:
             ReadBit(wire)
             ReadBit(wire)
-            WriteBit(wire)
+            WriteBit(wire, bi)
         for i in range(len(currTrace), 64):
             bit0 = ReadBit(wire)
             bit1 = ReadBit(wire)

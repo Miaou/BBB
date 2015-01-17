@@ -65,7 +65,7 @@ MAIN:
     ADD     r1, r1, 12      // Points to next action
     SUB     r2, r2, 1
     QBNE    switch_action, r2, 0 // While there is still an action to read
-    SBCO    r2, C28, 0, 4   // No more command: it was just completed
+    SBCO    r2, C28, 0, 4   // No more command: it was just completed (r2 == COMMAND_STDBY == 0)
     MOV     r1, P_ACTION
     SBCO    r2, C28, r1, 4  // Resets nAction too
     MOV     r31.b0, INTC_VALID_STROBE | PRU0_ARM_INTERRUPT // Tells ARM action chain is treated
