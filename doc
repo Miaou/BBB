@@ -43,8 +43,10 @@ Problème des mises à jours : cf https://www.mail-archive.com/beagleboard@googl
 Et ça semble régler le problème.
 Installation de zsh : à faire.
 
-Adafruit_BBIO est sensée être "prête" pour Python3. Sauf que... non.
-Et smbus peut-être, mais c'est pas gagné...
+Adafruit_BBIO est sensée être "prête" pour Python3. Sauf que... où ça ??
+Pour SMBus, c'est bon :
+- http://procrastinative.ninja/2014/07/21/smbus-for-python34-on-raspberry/
+- mais il faut prendre le smbusmodule.c ici : http://www.spinics.net/lists/linux-i2c/msg08427.html
 
 Config de git :
 [user]
