@@ -35,7 +35,7 @@
 import struct
 import pypruss
 import mmap
-
+from binascii import hexlify
 
 
 # This is low-level stuff, it maybe should be in OneWireHWIface... Maybe.
@@ -146,7 +146,8 @@ class Sensor:
         self.iLastTemp = iTemp
         return iTemp
     def ReadTemperature(self):
-        return GetTemperature()
+        self.ReadTemperatureRaw()
+        return self.GetTemperature()
     def GetTemperature(self):
         "Returns the last result of ReadTemperature()"
         return self.iLastTemp/16.
@@ -446,7 +447,6 @@ def DallasFuncReadPowerSupply(wire):
 
 
 if __name__=='__main__':
-    from binascii import hexlify
     owire = OneWire(9,13, 9,14, pruicss)
     owire.SearchMoreRoms()
     print('Found {} sensors'.format(len(owire.dSensors)))
