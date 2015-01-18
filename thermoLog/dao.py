@@ -39,6 +39,8 @@
 #  should be eval()-safe, so check it out, because it can be a source of code injection.
 #  should tolerate the use of things like struct (?) maybe not, it would allow open(). So only struct ?
 
+# The real problems will be with handling errors with being too hard on user.
+
 
 
 import sqlite3
@@ -60,6 +62,7 @@ printme = lambda *args,**kwargs: kwargs.get('file',sys.stdout).write(kwargs.get(
 
 sDB='thermoLog.db'
 exprRawToCelsiusMLK = 'raw*.02-273.15'
+exprRawToCelsiusDS  = 'raw>>4'
 class DAO(object):
     def __init__(self, sDB):
         self.sDB = sDB
@@ -68,49 +71,72 @@ class DAO(object):
         self.curWaveID = None
         with self.db as db:
             db.execute('CREATE TABLE IF NOT EXISTS Sensors (ID INTEGER PRIMARY KEY AUTOINCREMENT,\
-                        bPartNumber BLOB NOT NULL, bHardID BLOB, exprRawToReadable TEXT)')
+                        bPartNumber BLOB NOT NULL, bHardID BLOB, exprRawToReadable TEXT)') # FIXME: avoid insertion of a (bPartNumber, bHardID) that already exists
             db.execute('CREATE TABLE IF NOT EXISTS Waves (ID INTEGER PRIMARY KEY AUTOINCREMENT,\
-                        iTimeStarted INTEGER NOT NULL, sComment TEXT')
+                        iTimeStarted INTEGER NOT NULL, sComment TEXT)')
             db.execute('CREATE TABLE IF NOT EXISTS SensorComments (SensorID INTEGER, WaveID INTEGER,\
                         sDescPlacement TEXT NOT NULL, sPlotLegend TEXT,\
                         FOREIGN KEY (SensorID) REFERENCES Sensors(ID),\
-                        FOREIGN KEY (WaveID) REFERENCES Waves(ID))')
+                        FOREIGN KEY (WaveID) REFERENCES Waves(ID),\
+                        PRIMARY KEY (SensorID, WaveID))')
             db.execute('CREATE TABLE IF NOT EXISTS Measures (WaveID INTEGER, iTimeStamp INTEGER NOT NULL, SensorID INTEGER,\
                         iRawValue INTEGER,\
                         FOREIGN KEY (WaveID) REFERENCES Waves(ID),\
-                        FOREIGN KEY (SensorID) REFERENCES Sensors(ID))')
+                        FOREIGN KEY (SensorID) REFERENCES Sensors(ID),\
+                        PRIMARY KEY (WaveID, iTimeStamp, SensorID))')
     # -----
     #  API
     # -----
     # (to be completed)
     def newSensor(self, bPartNumber, bHardID=b'', exprRawToReadable=''):
-        pass
+        'Adds a sensor to the DB. Ignored if already exist'
+        assert bPartNumber, "Please give the type of the sensor (e.g. the part number, DS18B20, ...)"
+        with self.db as db:
+            # FIXME: define behavior if sensor already exists (Exception? print? ...)
+            if db.execute('SELECT ID FROM Sensors WHERE bPartNumber=? AND bHardID=?', (bPartNumber,bHardID)).fetchone():
+                # FIXME: test me
+                db.execute('UPDATE Sensors SET exprRawToReadable=? WHERE bPartNumber=? AND bHardID=?', (exprRawToReadable,bPartNumber,bHardID))
+            else:
+                db.execute('INSERT INTO Sensors(bPartNumber, bHardID, exprRawToReadable) VALUES(?,?,?)',
+                           (bPartNumber, bHardID, exprRawToReadable))
     def iterSensors(self):
-        'Returns an iterator on sensors\n(list(dao.iterSensors()) to obtain a list)'
+        'Returns an iterator on sensors (ID, bPartNumber, bHardwareID)\n(list(dao.iterSensors()) to obtain a list)'
         for tup in self.db.execute('SELECT * FROM Sensors'):
             yield tup
     def displaySensors(self):
         'Pretty print sensors list'
-        # Print will be made with fixed-width column to display things nicely.
+        # FIXME: Print will be made with fixed-width column to display things nicely.
         for ID, bPartN, bHardID, expr in self.iterSensors():
             print(ID, bPartN, bHardID, expr)
     def commentSensor(self, sensorID, sDescPlacement, sPlotLegend='', waveID=None):
         if not self.curWaveID and not waveID:
             raise ValueError('Could not guess which wave to comment')
+        with self.db as db:
+            assert db.execute('SELECT ID FROM Sensors WHERE ID=?', (sensorID,)).fetchone(), "Sensor not yet in DB"
+            assert db.execute('SELECT ID FROM Waves WHERE ID=?', (waveID,)).fetchone(), "Wave not yet in DB"
+            db.execute('INSERT OR REPLACE INTO SensorComments VALUES(?,?,?,?)', (sensorID, waveID, sDescPlacement, sPlotLegend))
 
     def newWave(self, iTimeStamp=None, sComment=''):
         if not iTimeStamp:
             iTimeStamp = int(time.time())
         with self.db as db:
             db.execute('INSERT INTO Waves(iTimeStarted, sComment) VALUES(?,?)', (iTimeStamp, sComment))
-        self.curWaveID = self.db.insert_id() # To be tested.
-    def commentWave(self, waveID=None):
+        self.curWaveID = self.db.insert_id() # FIXME: To be tested.
+    def commentWave(self, sComment, waveID=None):
         if not self.curWaveID and not waveID:
             raise ValueError('Could not guess which wave to comment')
+        with self.db as db:
+            assert db.execute('SELECT ID FROM Waves WHERE ID=?', (waveID,)).fetchone(), "Wave not yet in DB"
+            db.execute('UPDATE Waves SET sComment=? WHERE ID=?', (sComment, sPlotLegend, waveID))
     def iterWaves(self):
-        pass
+        'Returns an iterator on waves (ID, iTimeStarted, sComment)'
+        for tup in self.db.execute('SELECT * FROM Waves'):
+            yield tup
     def displayWaves(self):
-        pass
+        'Future pretty print'
+        # FIXME: pretty print
+        for ID, iTime, sComm in self.iterWaves():
+            print(ID, iTime, sComm)
 
     def newMeasure(self, sensorID, iRawValue, iTimeStamp=None, waveID=None):
         if not self.curWaveID and not waveID:
@@ -119,8 +145,10 @@ class DAO(object):
             waveID = self.waveID
         if not iTimeStamp:
             iTimeStamp = int(time.time())
+        iTimeStamp = int(iTimeStamp)
         with self.db as db:
-            db.execute('INSERT INTO Measures VALUES(?,?,?,?)', (waveID, iTimeStamp, sensorID, iRawValue))
+            # FIXME: define the 'measure already exists' behavior
+            db.execute('INSERT OR REPLACE INTO Measures VALUES(?,?,?,?)', (waveID, iTimeStamp, sensorID, iRawValue))
     def iterMeasures(self, sensorID, waveID):
         'Iterates (iTimeStamp, fReadableValue) over Measures'
         with self.db as db:
@@ -300,6 +328,9 @@ if False:
     txt = gnuplot.communicate()[0]
     os.remove('tempgnu')
     print(txt.decode())
+
+
+
 
 
 
