@@ -41,6 +41,8 @@
 
 # The real problems will be with handling errors with being too hard on user.
 
+# To do next: let the user exclude some bad measures
+
 
 
 import sqlite3
@@ -140,8 +142,37 @@ class DAO(object):
     def displayWaves(self):
         'Future pretty print'
         # FIXME: pretty print
-        for ID, iTime, sComm in self.iterWaves():
-            print(ID, iTime, sComm)
+        def display_time(seconds, granularity=2):
+            # Taken from http://stackoverflow.com/questions/4048651/python-function-to-convert-seconds-into-minutes-hours-and-days
+            result = []
+            intervals = (('months', 2592000),# 60 * 60 * 24 * 30
+                         ('weeks', 604800),  # 60 * 60 * 24 * 7
+                         ('days', 86400),    # 60 * 60 * 24
+                         ('hours', 3600),    # 60 * 60
+                         ('mins', 60),
+                         ('secs', 1))
+            for name, count in intervals:
+                value = seconds // count
+                if value:
+                    seconds -= value * count
+                    if value == 1:
+                        name = name.rstrip('s')
+                    result.append("{} {}".format(value, name))
+            return ', '.join(result[:granularity]) or '0 secs'
+        for waveID, iTime, sComm in self.iterWaves():
+            print(': '.join(map(str, [waveID, time.ctime(iTime), sComm])))
+            maxT = 0
+            for sensID, sDesc in self.db.execute('SELECT SensorID, sDescPlacement FROM SensorComments WHERE WaveID=?', (waveID,)):
+                nMeas = 0
+                for t,v in self.iterMeasures(sensID, waveID):
+                    t,v = zip(*self.iterMeasures(sensID, waveID))
+                    maxT = max((max(t)-t[0], maxT))
+                    nMeas = len(v)
+                    break
+                else:
+                    nMeas = 0
+                print(' - sensor {} ({} measures) {}'.format(sensID, nMeas, sDesc))
+            print(' -> {}'.format(display_time(maxT)))
 
     def newMeasure(self, sensorID, iRawValue, iTimeStamp=None, waveID=None):
         if not self.curWaveID and not waveID:
@@ -158,7 +189,7 @@ class DAO(object):
         'Iterates (iTimeStamp, fReadableValue) over Measures'
         with self.db as db:
             exprRaw, = db.execute('SELECT exprRawToReadable FROM Sensors WHERE ID=?', (sensorID,)).fetchone()
-            print(exprRaw)
+            #print(exprRaw)
             for t,raw in db.execute('SELECT iTimeStamp,iRawValue FROM Measures WHERE WaveID=? AND SensorID=?', (waveID, sensorID)):
                 yield (t, eval(exprRaw, {}, {'raw':raw}))
     
@@ -225,7 +256,7 @@ class DAO(object):
 class DAODrawer(DAO):
     def __init__(self, sDB, curWave=None):
         global pylab, np
-        super(DAODrawer,self).__init__(sDB, curWave)
+        super(DAODrawer,self).__init__(sDB)
         #super().__init__(sDB, curWave)
 
     @staticmethod
@@ -261,6 +292,10 @@ class DAODrawer(DAO):
         
         
 
+    # ---------
+    #  old API
+    # ---------
+    # Still here to take some inspiration. Will be deleted.
     def pylabByName(self, name):
         self._pylabPts(self.listEntriesByName(name), name)
     def pylabByIndex(self, i):
@@ -297,6 +332,47 @@ class DAODrawer(DAO):
         txt = gnuplot.communicate()[0]
         os.remove('tempgnu')
         print(txt.decode('utf-8'))
+
+    # -----
+    #  API
+    # -----
+    def pylabPltWave(self, waveID, lSensID=[], tBeg=0, tEnd=-1):
+        'Plots sensors given in lSensID (if empty, plots it all), between tBeg from start and to tEnd included'
+        assert self.db.execute('SELECT ID FROM Waves WHERE ID=?', (waveID,)).fetchone(), 'Wave {} is not in the DB'.format(waveID)
+        if not lSensID:
+            lSensID = [sens for sens, in self.db.execute('SELECT ID FROM Sensors')]
+        tup = self.db.execute('SELECT sComment FROM Waves WHERE ID=?', (waveID,)).fetchone()
+        sTitle, = tup if tup else ('Mesures pendant la vague {}'.format(waveID),)
+        for sensID in lSensID:
+            # Skip if no measures
+            for t,v in self.iterMeasures(sensID, waveID):
+                break
+            else:
+                continue
+            t,v = zip(*self.iterMeasures(sensID, waveID))
+            t = np.array(t)-t[0]
+            for i,t0 in enumerate(t):
+                if t0>tBeg:
+                    iT0 = i-1
+                    break
+            else:
+                iT0 = len(t)
+            if tEnd<0 or tEnd>=t[-1]:
+                iT1 = len(t)
+            else:
+                for i,t0 in enumerate(t):
+                    if t0>tEnd:
+                        iT1 = i-1
+                        break
+            tup = self.db.execute('SELECT sPlotLegend,sDescPlacement FROM SensorComments WHERE SensorID=? AND WaveID=?', (sensID, waveID)).fetchone()
+            leg = ', '.join(tup) if tup else ''
+            if len(leg)>53:
+                leg = leg[:50]+'...'
+            pylab.plot(t[iT0:iT1],v[iT0:iT1], label=leg)
+        pylab.legend()
+        pylab.xlabel('Temps (s)')
+        pylab.title(sTitle)
+        pylab.show()
 
 
 
