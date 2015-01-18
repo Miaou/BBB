@@ -61,8 +61,8 @@ printme = lambda *args,**kwargs: kwargs.get('file',sys.stdout).write(kwargs.get(
 
 
 sDB='thermoLog.db'
-exprRawToCelsiusMLK = 'raw*.02-273.15'
-exprRawToCelsiusDS  = 'raw>>4'
+exprRawToCelsiusMLX = 'raw*.02-273.15'
+exprRawToCelsiusDS  = 'raw/16.'
 class DAO(object):
     def __init__(self, sDB):
         self.sDB = sDB
@@ -111,6 +111,8 @@ class DAO(object):
     def commentSensor(self, sensorID, sDescPlacement, sPlotLegend='', waveID=None):
         if not self.curWaveID and not waveID:
             raise ValueError('Could not guess which wave to comment')
+        if not waveID:
+            waveID = self.curWaveID
         with self.db as db:
             assert db.execute('SELECT ID FROM Sensors WHERE ID=?', (sensorID,)).fetchone(), "Sensor not yet in DB"
             assert db.execute('SELECT ID FROM Waves WHERE ID=?', (waveID,)).fetchone(), "Wave not yet in DB"
@@ -120,11 +122,14 @@ class DAO(object):
         if not iTimeStamp:
             iTimeStamp = int(time.time())
         with self.db as db:
-            db.execute('INSERT INTO Waves(iTimeStarted, sComment) VALUES(?,?)', (iTimeStamp, sComment))
-        self.curWaveID = self.db.insert_id() # FIXME: To be tested.
+            cur = db.cursor()
+            cur.execute('INSERT INTO Waves(iTimeStarted, sComment) VALUES(?,?)', (iTimeStamp, sComment))
+            self.curWaveID = cur.lastrowid 
     def commentWave(self, sComment, waveID=None):
         if not self.curWaveID and not waveID:
             raise ValueError('Could not guess which wave to comment')
+        if not waveID:
+            waveID = self.curWaveID
         with self.db as db:
             assert db.execute('SELECT ID FROM Waves WHERE ID=?', (waveID,)).fetchone(), "Wave not yet in DB"
             db.execute('UPDATE Waves SET sComment=? WHERE ID=?', (sComment, sPlotLegend, waveID))
@@ -142,7 +147,7 @@ class DAO(object):
         if not self.curWaveID and not waveID:
             raise ValueError('No current wave, did you forget to dao.newWave()?')
         if not waveID:
-            waveID = self.waveID
+            waveID = self.curWaveID
         if not iTimeStamp:
             iTimeStamp = int(time.time())
         iTimeStamp = int(iTimeStamp)
@@ -152,7 +157,8 @@ class DAO(object):
     def iterMeasures(self, sensorID, waveID):
         'Iterates (iTimeStamp, fReadableValue) over Measures'
         with self.db as db:
-            exprRaw, = db.execute('SELECT exprRawToReadable FROM Sensors WHERE SensorID=?', (sensorID,))
+            exprRaw, = db.execute('SELECT exprRawToReadable FROM Sensors WHERE ID=?', (sensorID,)).fetchone()
+            print(exprRaw)
             for t,raw in db.execute('SELECT iTimeStamp,iRawValue FROM Measures WHERE WaveID=? AND SensorID=?', (waveID, sensorID)):
                 yield (t, eval(exprRaw, {}, {'raw':raw}))
     
