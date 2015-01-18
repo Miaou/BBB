@@ -84,11 +84,12 @@ if __name__=='__main__':
         dao.commentSensor(5, 'N/A')
         t0 = time.time()
         try:
+            PERIOD = 10
             while not bEnd.value:
-                while time.time()-t0 > 1:
-                    time.sleep(.001)
-                t0 += 1
-                assert time.time()-t0 < 1
+                while time.time()-t0 < PERIOD:
+                    time.sleep(PERIOD/100)
+                t0 += PERIOD
+                assert time.time()-t0 < PERIOD
                 # FIXME: think about sensorID too in newMeasure...
                 iT = int(time.time())
                 # Records measures
