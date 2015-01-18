@@ -28,6 +28,8 @@
 #  functions such as OneWire.ReadTemperature(): should it print the CRC error, leave it?
 #  Be able to continue and raise it again when reads are all done?
 
+# Then Sensor should go out: it uses Dallas, it is not the only thing that might use Dallas' protocol.
+
 
 
 import struct
@@ -126,24 +128,31 @@ class Sensor:
         assert Sensor.CheckCRC(rom), "CRC on serial number failed"
         self.rom = rom
         self.wire = wire
-        self.lastTemp = None
+        self.iLastTemp = None
 
     def ConvertTemperature(self):
         "Can be skiped if a ConvertTemperature() is done on the OneWire instead"
         DallasRomMatch(self.wire, self.rom)
         DallasFuncConvertT(self.wire)
-    def ReadTemperature(self):
+    def ReadTemperatureRaw(self):
         "Reads the scratchpad and returns temperature"
         DallasRomMatch(self.wire, self.rom)
         buf = DallasFuncScratchpadRead(self.wire)
         assert Sensor.CheckCRC(buf), "CRC on read scratchpad failed (was {})".format(hexlify(buf))
         iTemp, = struct.unpack('<h', buf[:2])
-        fTemp = iTemp/16.
-        self.lastTemp = fTemp
-        return fTemp
+        # It is tempting to say that if iTemp == 0x0550 (85°C), then it is the reset value
+        #  and measure should be discarded. However, DS18B20 can measure up to 100°C, so...
+        #  and it is specific to DS18B20, not included in Dallas
+        self.iLastTemp = iTemp
+        return iTemp
+    def ReadTemperature(self):
+        return GetTemperature()
     def GetTemperature(self):
         "Returns the last result of ReadTemperature()"
-        return self.lastTemp
+        return self.iLastTemp/16.
+    def GetTemperatureRaw(self):
+        "Returns the last result of ReadTemperatureRaw()"
+        return self.iLastTemp
 
 
 # ----------
