@@ -9,10 +9,35 @@ class SHT21 :
     Soft_Reset       = 0xFE
     Write_Reg        = 0xE6
     Read_Reg         = 0xE7
-    
+##############################################################################
+##  Experimental register found by looking for each one individually        ##
+##  with a 10 seconds wait between each try. CheckCRC says true for all.    ##
+    RH_Reg           = 0x05                                                 ##
+    T_Reg            = 0x03                                                 ##
+##  read_reg?          0x06                                                 ##
+##  read_reg           0x07                                                 ##
+##  unknown            0x09     result was 6,0,90(constant over time)       ##
+##  unknown            0x0F     result was 2,68,32(constant over time)      ##
+##  serial number?     0x1A     periodic on 64 bits?                        ##
+##  result was      [25, 203, 218, 223, 71, 170, 137, 242, 217, 140, 232    ##
+##                  , 120, 231, 86, 128, 122, 7, 151, 248, 59, 252, 255,    ##
+##                  232, 120, 54, 99, 129, 75, 30, 92, 80, 126]             ##
+##  serial number?     0x1B     same as 0x1A with random shift              ##
+##  T_reg?             0xE3     result was 103,88,60(made a new measure?)   ##
+##  RH_reg?            0xE5     result was 83,206,146(new measure?)         ##
+##  read_reg           0xE6     result was 58,30                            ##
+##  read_reg           0xE7     result was 58,30                            ##
+##  unknown            0xE9     result was 6,0,90                           ##
+##  unknown            0xEF     result was 2,68,32                          ##
+##  serial number      0xFA     same as 1A, check sensirion(says 64 bits ID)##
+##  serial number?     0xFB     same as 1B                                  ##
+##  device ID?         0xFF     check i2c full specs, results seems random  ##
+############################1#################################################
+
     def __init__(self, addr, busnum = 1) :
         self.address = addr
         self.bus = SMBus(busnum)
+        #self.bus.open(busnum)
         self.Reset()
         reg = self.ReadReg()
         if (reg & 0x80) and (reg & 0x01):
@@ -29,24 +54,38 @@ class SHT21 :
             self.T_res  = 12
 
     def getRH(self):
-        self.bus.write_byte(self.address, self.RHmeasure_noHold)
-        time.sleep(1)
-        RH = self.bus.read_byte(self.address)
-        RH1 = self.bus.read_byte(self.address)
-        crc = [RH, RH1, self.bus.read_byte(self.address)]
-        #print bin(RH), bin(RH1)
-        print self.CheckCRC(crc), self.CheckCRC2(crc)
-        return -6+125.*(RH*256+RH1)/65536.
+        try:
+            self.bus.write_byte(self.address, self.RHmeasure_noHold)
+            time.sleep(0.1)
+            RH = self.bus.read_i2c_block_data(self.address, self.RH_Reg, 3)
+            print RH
+            if self.CheckCRC(RH):
+                self.RHum = RH
+                RH[1] &= ~0x03      #reset 2 status bits(LSB)
+                return -6+125.*(RH[0]*256+RH[1])/65536.
+            else:
+                print 'CRC checksum failed, data was corrupted(RH reading)'
+                return -1
+        except IOError, err:
+            print 'Failed reading RH'
+            return -1
 
     def getT(self):
-        self.bus.write_byte(self.address, self.Tmeasure_noHold)
-        time.sleep(1)
-        T = self.bus.read_byte(self.address)
-        T1 = self.bus.read_byte(self.address)
-        crc = [T, T1, self.bus.read_byte(self.address)]
-        #print bin(T), bin(T1)
-        print self.CheckCRC(crc), self.CheckCRC2(crc)
-        return -46.85+175.72*(T*256+T1)/65536.
+        try:
+            self.bus.write_byte(self.address, self.Tmeasure_noHold)
+            time.sleep(0.1)
+            T = self.bus.read_i2c_block_data(self.address, self.T_Reg, 3)
+            print T
+            if self.CheckCRC(T):
+                self.Temp = T
+                T[1] &= ~0x03       #reset 2 status bits(LSB)
+                return -46.85+175.72*(T[0]*256+T[1])/65536.
+            else:
+                print 'CRC checksum failed, data was corrupted(temp reading)'
+                return -1
+        except IOError, err:
+            print 'Failed reading Temperature'
+            return -1
     
     def Reset(self):
         self.bus.write_byte(self.address, self.Soft_Reset)
@@ -67,6 +106,19 @@ class SHT21 :
         reg &= 0x38
         self.bus.write_byte_data(self.address, self.Write_Reg, val)
 
+    def test(self):
+        self.T = []
+        self.getRH()
+        self.getT()
+        for i in range(256):
+            try :
+                time.sleep(10)
+                self.T.append((hex(i), self.bus.read_i2c_block_data(sensor.address, i)))
+                print hex(i), 'success reading'
+            except IOError, err:
+                print hex(i), 'failed reading'
+        return self.T
+
     def CheckCRC(self, buf):
         poly = 0x131
         crc = 0
@@ -81,24 +133,8 @@ class SHT21 :
                 #print crc
         return crc==0
 
-    def CheckCRC2(self, buf):
-        poly = 0x8C
-        s = 0
-        #print buf[2]
-        for by in buf:
-            for i in range(8):
-                r =  (s&0x01)
-                f = (by&0x01)
-                by >>= 1
-                xor = poly if (r^f) else 0
-                s = ((s>>1) ^ xor)&0xFF
-                #print s
-        return s==0
-
 sensor = SHT21(0x40)
-if True:
+if __name__ == '__main__':
     print sensor.getRH()
     print sensor.getT()
 
-if False:
-    print sensor.ReadReg()
