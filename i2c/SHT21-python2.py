@@ -33,6 +33,8 @@ class SHT21 :
 ##  serial number?     0xFB     same as 1B                                  ##
 ##  device ID?         0xFF     check i2c full specs, results seems random  ##
 ############################1#################################################
+    class CRCError(Exception):
+        pass
 
     def __init__(self, addr, busnum = 1) :
         self.address = addr
@@ -54,38 +56,33 @@ class SHT21 :
             self.T_res  = 12
 
     def getRH(self):
-        try:
-            self.bus.write_byte(self.address, self.RHmeasure_noHold)
-            time.sleep(0.1)
-            RH = self.bus.read_i2c_block_data(self.address, self.RH_Reg, 3)
-            print RH
-            if self.CheckCRC(RH):
-                self.RHum = RH
-                RH[1] &= ~0x03      #reset 2 status bits(LSB)
-                return -6+125.*(RH[0]*256+RH[1])/65536.
-            else:
-                print 'CRC checksum failed, data was corrupted(RH reading)'
-                return -1
-        except IOError, err:
-            print 'Failed reading RH'
-            return -1
+        self.bus.write_byte(self.address, self.RHmeasure_noHold)
+        time.sleep(0.1)
+        RH = self.bus.read_i2c_block_data(self.address, self.RH_Reg, 3)
+        #print RH
+        if self.CheckCRC(RH):
+            self.RHum = RH
+            RH[1] &= ~0x03      #reset 2 status bits(LSB)
+            return -6+125.*(RH[0]*256+RH[1])/65536.
+        else:
+            #print 'CRC checksum failed, data was corrupted(RH reading)'
+            #return -1
+            raise self.CRCError
+
 
     def getT(self):
-        try:
-            self.bus.write_byte(self.address, self.Tmeasure_noHold)
-            time.sleep(0.1)
-            T = self.bus.read_i2c_block_data(self.address, self.T_Reg, 3)
-            print T
-            if self.CheckCRC(T):
-                self.Temp = T
-                T[1] &= ~0x03       #reset 2 status bits(LSB)
-                return -46.85+175.72*(T[0]*256+T[1])/65536.
-            else:
-                print 'CRC checksum failed, data was corrupted(temp reading)'
-                return -1
-        except IOError, err:
-            print 'Failed reading Temperature'
-            return -1
+        self.bus.write_byte(self.address, self.Tmeasure_noHold)
+        time.sleep(0.1)
+        T = self.bus.read_i2c_block_data(self.address, self.T_Reg, 3)
+        #print T
+        if self.CheckCRC(T):
+            self.Temp = T
+            T[1] &= ~0x03       #reset 2 status bits(LSB)
+            return -46.85+175.72*(T[0]*256+T[1])/65536.
+        else:
+            #print 'CRC checksum failed, data was corrupted(temp reading)'
+            #return -1
+            raise self.CRCError
     
     def Reset(self):
         self.bus.write_byte(self.address, self.Soft_Reset)
@@ -98,8 +95,9 @@ class SHT21 :
         if self.CheckCRC(crc):
             return reg & 0xFF
         else:
-            print 'Error : CRC not matching !'
-            return 0
+            #print 'Error : CRC not matching !'
+            #return 0
+            raise self.CRCError
         
     def WriteReg(self, val):
         reg = self.ReadReg()
@@ -133,8 +131,16 @@ class SHT21 :
                 #print crc
         return crc==0
 
-sensor = SHT21(0x40)
 if __name__ == '__main__':
-    print sensor.getRH()
-    print sensor.getT()
-
+    try:
+        sensor = SHT21(0x40)
+    except:
+        pass
+    try:
+        print sensor.getRH()
+    except:
+        print -1.
+    try:
+        print sensor.getT()
+    except:
+        print -1.
