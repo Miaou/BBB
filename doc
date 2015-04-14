@@ -79,6 +79,12 @@ export VISUAL=vim
 export EDITOR=vim
 Force crontab à utiliser vim et non nano
 On fait donc : crontab -e
-On insère tout en bas: @reboot python /home/debian/blink.py &
-Pour trouver le process et le tuer : ps aux | grep /home/debian/blink.py
+On insère tout en bas: @reboot python3 /home/debian/blink.py &
+!!!! Ne pas oublier le & !!!
+Dans le .py, ajouter les lignes suivantes :
+abspath = os.path.abspath(__file__)
+dname = os.path.dirname(abspath)
+os.chdir(dname)
+En effet, crontab change le working directory a une destination inconnue...
+Pour trouver le process et le tuer : ps aux | grep python
 kill id(il faut trouver l'id dans la commande précédente)

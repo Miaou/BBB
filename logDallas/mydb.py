@@ -1,6 +1,16 @@
 #!/usr/bin/python3
 
+import os
 import sys
+
+#for crontab, we must change directory
+#os.chdir('/root/BBB/logDallas')
+
+#more elegant way:
+abspath = os.path.abspath(__file__)
+dname = os.path.dirname(abspath)
+os.chdir(dname)
+
 sys.path.append('../libDS18B20/libDallas-PRU')
 sys.path.append('../thermoLog')
 sys.path.append('../i2c')
@@ -36,6 +46,7 @@ def workerSHT(iface, stop):
     print('End of measurement')
 
 if True:
+    #time.sleep(15)
     db = 'essai.db'
     dao = DAO(db)
     dao.newSensor(b'SHT21', b'RH')
