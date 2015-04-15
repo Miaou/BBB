@@ -88,3 +88,20 @@ os.chdir(dname)
 En effet, crontab change le working directory a une destination inconnue...
 Pour trouver le process et le tuer : ps aux | grep python
 kill id(il faut trouver l'id dans la commande précédente)
+Verifier si cron a bien fonctionner:
+/etc/init.d/cron status
+et cat /sys/devices/bone_capemgr.9/slots doit ressembler à ca:
+0: 54:PF---
+1: 55:PF---
+2: 56:PF---
+3: 57:PF---
+4: ff:P-O-L Bone-LT-eMMC-2G,00A0,Texas Instrument,BB-BONE-EMMC-2G
+5: ff:P-O-L Bone-Black-HDMI,00A0,Texas Instrument,BB-BONELT-HDMI
+7: ff:P-O-L Override Board Name,00A0,Override Manuf,BB-I2C1         #echo BB-I2C1 a fonctionne
+8: ff:P-O-L Override Board Name,00A0,Override Manuf,BB-BONE-PRU     #echo BB-BONE-PRU aussi
+
+Dans crontab au minimum:
+@reboot echo BB-BONE-PRU > /sys/devices/bone_capemgr.9/slots
+@reboot echo BB-I2C1 > /sys/devices/bone_capemgr.9/slots
+@reboot route add default gw 192.168.7.1  #ne fonctionne pas car le network n'est pas accessible au demarrage
+@reboot python3 /chemin/du/fichier.py &   #a n'insérer qu'au début des essais, sinon lancera a chaque demarrage
