@@ -57,9 +57,9 @@ clean: cleannobin
 
 precompile: $(PATH_PRU_LOADER)lib/libprussdrv.so $(PASM) pypruss.so
 $(PATH_PRU_LOADER)lib/libprussdrv.so:
-	make -C$(PATH_PRU_SW)
+	make -C$(PATH_PRU_SW)../ all
 $(PASM):
-	make -C$(PATH_PRU_SW)
+	make -C$(PATH_PRU_SW)../ all
 pypruss.so:
 	make -C$(PATH_PYPRUSS)
 
