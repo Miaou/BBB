@@ -22,8 +22,7 @@ from threading import Thread
 from multiprocessing import Value
 from SHT21 import SHT21
 import time
-
-import subprocess
+from OnOff import OnOff
 
 class Bulk:
     def __init__(self):
@@ -95,12 +94,23 @@ if True:
     dao.commentSensor(1, 'Derrière le PC', 'Air(°C)')
     Thread(target=workerDS, args=(iface, stop)).start()
     time.sleep(5)
+    #onoffventilo = OnOff(pin, value_to_trigger, mode=True)
+    #onoffpompe = OnOff(pin, value_to_trigger, mode=False)
+    #tempvalue = Value('f', 0)
+    #rhvalue = Value('f', autre)
+    #Thread(target=onoff.run, args=(tempvalue, stop)).start()
+    #onoffdiode = OnOff(pin, 0.5)
+    #diode = Value('b', True)
+    #Thread(target=onoffdiode.run, args=(diode, stop)).start()
+
 
     try:
         while True:
+            #tempvalue.value = dsTemp[??]
             for sensor in iface.dsTemp:
                 dao.newMeasure(sensor.num, sensor.GetTemperature())
-                time.sleep(5)
+            time.sleep(5)
+            #diode.value = not diode.value
     except KeyboardInterrupt:
         print('End of record')
         stop.value = True
