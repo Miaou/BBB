@@ -15,7 +15,7 @@ sys.path.append('../libDS18B20/libDallas-PRU')
 sys.path.append('../thermoLog')
 sys.path.append('../i2c')
 
-from dallas import OneWire, Sensor, pruicss
+from dallas import OneWire, Sensor, pruicss, NoResponseError
 
 from dao import DAO
 from threading import Thread
@@ -23,6 +23,7 @@ from multiprocessing import Value
 from SHT21 import SHT21
 import time
 from OnOff import OnOff
+from binascii import unhexlify
 
 class Bulk:
     def __init__(self):
@@ -45,32 +46,45 @@ def workerSHT(iface, stop):
 
     print('End of SHT measurement')
 
-def workerDS(iface, stop):
+def workerDS(iface, stop, mesure_reussie):
+## capteur 1 : 28ff753e651401b3
+## capteur 2 : 28ffd58c65140116
+## capteur 3 : 28ffbef1691404c6
+## capteur 4 : 28ff498a65140189
     wire = OneWire(9,13,9,14,pruicss)
     wire.SearchMoreRoms()
-    i = 1
-    for sensor in wire.dSensors.values():
-        iface.dsTemp.append(sensor)
-        sensor.num = i
-        i += 1
+    
+    iface.dsTemp.append(wire.dSensors[unhexlify(b'28ff753e651401b3')]
+    iface.dsTemp.append(wire.dSensors[unhexlify(b'28ffd58c65140116')]
+    iface.dsTemp.append(wire.dSensors[unhexlify(b'28ffbef1691404c6')]
+    iface.dsTemp.append(wire.dSensors[unhexlify(b'28ff498a65140189')]
 
+    log = open('measures.log', 'a')
+    log.write("\n\n\nStarting DS measures : " + str(time.time()) + '\n')
     print('Starting DS measures')
     while not stop.value:
-        wire.ConvertTemperatures()
-        wire.ReadTemperatures()
-
-        #for rom in iface.dsTemp:
-        #    iface.dsTemp[rom] = 0
-        time.sleep(1)
+        try :
+            wire.ConvertTemperatures()
+            wire.ReadTemperatures()
+            mesure_reussie.value = True
+        except (NoResponseError, AssertionError) as e:
+            log.write(str(time.time())+" : "+str(e) + "\n")
+            mesure_reussie.value = False
+        finally:
+            time.sleep(1)
     
     print('End of DS measurement')
+    log.write(str(time.time()) + " : End of DS measurement")
+    log.close()
+
 
 iface = Bulk()
 stop = Value('b', False)
 db = 'essai.db'
+dao = DAO(db)
+mesure_reussie = Value('b', False)
 if False:
     #time.sleep(15)
-    dao = DAO(db)
     dao.newSensor(b'SHT21', b'RH')
     dao.newSensor(b'SHT21', b'Temperature')
     dao.newWave(sComment='Premier essai avec la nouvelle BBB')
@@ -88,29 +102,36 @@ if False:
         stop.value = True
 
 if True:
-    dao = DAO(db)
-    dao.newSensor(b'DS18B20', b'Temperature')
-    dao.newWave(sComment='Remise en route du PRU')
-    dao.commentSensor(1, 'Derrière le PC', 'Air(°C)')
-    Thread(target=workerDS, args=(iface, stop)).start()
+    dao.newSensor(b'DS18B20', b'28ff753e651401b3')
+    dao.newSensor(b'DS18B20', b'28ffd58c65140116')
+    dao.newSensor(b'DS18B20', b'28ffbef1691404c6')
+    dao.newSensor(b'DS18B20', b'28ff498a65140189')
+    dao.newWave(sComment='Essai du week-end 8 mai')
+    dao.commentSensor(1, 'Pale du haut, au milieu')
+    dao.commentSensor(2, "Pale du bas, a l'exterieur")
+    dao.commentSensor(3, "dans l'isolation, a l'exterieur")
+    dao.commentSensor(4, 'Pale du bas, au milieu')
+    Thread(target=workerDS, args=(iface, stop, mesure_reussie)).start()
     time.sleep(5)
     #onoffventilo = OnOff(pin, value_to_trigger, mode=True)
     #onoffpompe = OnOff(pin, value_to_trigger, mode=False)
     #tempvalue = Value('f', 0)
     #rhvalue = Value('f', autre)
     #Thread(target=onoff.run, args=(tempvalue, stop)).start()
-    #onoffdiode = OnOff(pin, 0.5)
-    #diode = Value('b', True)
-    #Thread(target=onoffdiode.run, args=(diode, stop)).start()
+    pin = "P9_31"
+    onoffdiode = OnOff(pin, 0.5)
+    diode = Value('b', True)
+    Thread(target=onoffdiode.run, args=(diode, stop)).start()
 
 
     try:
         while True:
             #tempvalue.value = dsTemp[??]
-            for sensor in iface.dsTemp:
-                dao.newMeasure(sensor.num, sensor.GetTemperature())
+            if mesure_reussie.value:
+                for i in range(len(iface.dsTemp)):
+                    dao.newMeasure(i+1, iface.dsTemp[i].GetTemperature())
+                diode.value = not diode.value
             time.sleep(5)
-            #diode.value = not diode.value
     except KeyboardInterrupt:
         print('End of record')
         stop.value = True
