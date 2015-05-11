@@ -51,16 +51,18 @@ def workerDS(iface, stop, mesure_reussie):
 ## capteur 2 : 28ffd58c65140116
 ## capteur 3 : 28ffbef1691404c6
 ## capteur 4 : 28ff498a65140189
+## capteur test : 2864edaa050000b0    
     wire = OneWire(9,13,9,14,pruicss)
     wire.SearchMoreRoms()
     
-    iface.dsTemp.append(wire.dSensors[unhexlify(b'28ff753e651401b3')]
-    iface.dsTemp.append(wire.dSensors[unhexlify(b'28ffd58c65140116')]
-    iface.dsTemp.append(wire.dSensors[unhexlify(b'28ffbef1691404c6')]
-    iface.dsTemp.append(wire.dSensors[unhexlify(b'28ff498a65140189')]
+    iface.dsTemp.append(wire.dSensors[unhexlify(b'2864edaa050000b0')])
+    #iface.dsTemp.append(wire.dSensors[unhexlify(b'28ff753e651401b3')])
+    #iface.dsTemp.append(wire.dSensors[unhexlify(b'28ffd58c65140116')])
+    #iface.dsTemp.append(wire.dSensors[unhexlify(b'28ffbef1691404c6')])
+    #iface.dsTemp.append(wire.dSensors[unhexlify(b'28ff498a65140189')])
 
-    log = open('measures.log', 'a')
-    log.write("\n\n\nStarting DS measures : " + str(time.time()) + '\n')
+    log = open('measures.log', 'a', 1)
+    log.write("\n\n\nStarting DS measures : " + time.ctime() + '\n')
     print('Starting DS measures')
     while not stop.value:
         try :
@@ -68,13 +70,13 @@ def workerDS(iface, stop, mesure_reussie):
             wire.ReadTemperatures()
             mesure_reussie.value = True
         except (NoResponseError, AssertionError) as e:
-            log.write(str(time.time())+" : "+str(e) + "\n")
+            log.write(time.ctime()+" : "+str(e) + "\n")
             mesure_reussie.value = False
         finally:
             time.sleep(1)
     
     print('End of DS measurement')
-    log.write(str(time.time()) + " : End of DS measurement")
+    log.write(time.ctime() + " : End of DS measurement")
     log.close()
 
 
@@ -89,7 +91,7 @@ if False:
     dao.newSensor(b'SHT21', b'Temperature')
     dao.newWave(sComment='Premier essai avec la nouvelle BBB')
     dao.commentSensor(1, 'Derriere le PC', 'Air(%RH)')
-    dao.commentSensor(2, 'Derriere le PC', 'Air(°C)')
+    dao.commentSensor(2, 'Derriere le PC', 'Air(.C)')
     Thread(target=workerSHT, args=(iface, stop)).start()
 
     try:
@@ -102,15 +104,17 @@ if False:
         stop.value = True
 
 if True:
-    dao.newSensor(b'DS18B20', b'28ff753e651401b3')
-    dao.newSensor(b'DS18B20', b'28ffd58c65140116')
-    dao.newSensor(b'DS18B20', b'28ffbef1691404c6')
-    dao.newSensor(b'DS18B20', b'28ff498a65140189')
+    dao.newSensor(b'DS18B20', b'2864edaa050000b0')
+    #dao.newSensor(b'DS18B20', b'28ff753e651401b3')
+    #dao.newSensor(b'DS18B20', b'28ffd58c65140116')
+    #dao.newSensor(b'DS18B20', b'28ffbef1691404c6')
+    #dao.newSensor(b'DS18B20', b'28ff498a65140189')
     dao.newWave(sComment='Essai du week-end 8 mai')
-    dao.commentSensor(1, 'Pale du haut, au milieu')
-    dao.commentSensor(2, "Pale du bas, a l'exterieur")
-    dao.commentSensor(3, "dans l'isolation, a l'exterieur")
-    dao.commentSensor(4, 'Pale du bas, au milieu')
+    dao.commentSensor(1, 'test maison longue duree')
+    #dao.commentSensor(1, 'Pale du haut, au milieu')
+    #dao.commentSensor(2, "Pale du bas, a l'exterieur")
+    #dao.commentSensor(3, "dans l'isolation, a l'exterieur")
+    #dao.commentSensor(4, 'Pale du bas, au milieu')
     Thread(target=workerDS, args=(iface, stop, mesure_reussie)).start()
     time.sleep(5)
     #onoffventilo = OnOff(pin, value_to_trigger, mode=True)

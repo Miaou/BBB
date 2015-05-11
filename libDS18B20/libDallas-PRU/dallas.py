@@ -100,7 +100,7 @@ class OneWire:
         "Display sensor list and last temperatures"
         print('Sensor list')
         for rom in self.dSensors:
-            print(' - {}: {}°C'.format(hexlify(rom), self.dSensors[rom].GetTemperature()))
+            print(' - {}: {}.C'.format(hexlify(rom), self.dSensors[rom].GetTemperature()))
     def ConvertTemperatures(self):
         "Starts the temperature conversion for all sensors (skip rom)"
         DallasRomSkip(self)
@@ -138,7 +138,7 @@ class Sensor:
         "Reads the scratchpad and returns temperature"
         DallasRomMatch(self.wire, self.rom)
         buf = DallasFuncScratchpadRead(self.wire)
-        assert Sensor.CheckCRC(buf), "CRC on read scratchpad failed (was {})".format(hexlify(buf))
+        assert Sensor.CheckCRC(buf), "CRC on read scratchpad failed (was {}) from {}".format(hexlify(buf), hexlify(self.rom))
         iTemp, = struct.unpack('<h', buf[:2])
         # It is tempting to say that if iTemp == 0x0550 (85°C), then it is the reset value
         #  and measure should be discarded. However, DS18B20 can measure up to 100°C, so...
