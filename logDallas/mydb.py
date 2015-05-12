@@ -23,7 +23,7 @@ from multiprocessing import Value
 from SHT21 import SHT21
 import time
 from OnOff import OnOff
-from binascii import unhexlify
+from binascii import hexlify, unhexlify
 
 class Bulk:
     def __init__(self):
@@ -46,7 +46,7 @@ def workerSHT(iface, stop):
 
     print('End of SHT measurement')
 
-def workerDS(iface, stop, mesure_reussie):
+def workerDS(iface, stop, mesure_reussie, diode):
 ## capteur 1 : 28ff753e651401b3
 ## capteur 2 : 28ffd58c65140116
 ## capteur 3 : 28ffbef1691404c6
@@ -55,28 +55,32 @@ def workerDS(iface, stop, mesure_reussie):
     wire = OneWire(9,13,9,14,pruicss)
     wire.SearchMoreRoms()
     
-    iface.dsTemp.append(wire.dSensors[unhexlify(b'2864edaa050000b0')])
-    #iface.dsTemp.append(wire.dSensors[unhexlify(b'28ff753e651401b3')])
-    #iface.dsTemp.append(wire.dSensors[unhexlify(b'28ffd58c65140116')])
-    #iface.dsTemp.append(wire.dSensors[unhexlify(b'28ffbef1691404c6')])
-    #iface.dsTemp.append(wire.dSensors[unhexlify(b'28ff498a65140189')])
+    #iface.dsTemp.append(wire.dSensors[unhexlify(b'2864edaa050000b0')])
+    iface.dsTemp.append(wire.dSensors[unhexlify(b'28ff753e651401b3')])
+    iface.dsTemp.append(wire.dSensors[unhexlify(b'28ffd58c65140116')])
+    iface.dsTemp.append(wire.dSensors[unhexlify(b'28ffbef1691404c6')])
+    iface.dsTemp.append(wire.dSensors[unhexlify(b'28ff498a65140189')])
 
     log = open('measures.log', 'a', 1)
     log.write("\n\n\nStarting DS measures : " + time.ctime() + '\n')
     print('Starting DS measures')
+    temps = time.time()
     while not stop.value:
         try :
             wire.ConvertTemperatures()
             wire.ReadTemperatures()
             mesure_reussie.value = True
-        except (NoResponseError, AssertionError) as e:
+            diode.value = not diode.value
+        except (NoResponseError, AssertionError) as e:##No assertion should be caught here, but safer to let it there
             log.write(time.ctime()+" : "+str(e) + "\n")
             mesure_reussie.value = False
+            diode.value = False
         finally:
             time.sleep(1)
     
     print('End of DS measurement')
     log.write(time.ctime() + " : End of DS measurement")
+    log.write("\nTotal time : " + str(time.time()-temps))
     log.close()
 
 
@@ -104,18 +108,19 @@ if False:
         stop.value = True
 
 if True:
-    dao.newSensor(b'DS18B20', b'2864edaa050000b0')
-    #dao.newSensor(b'DS18B20', b'28ff753e651401b3')
-    #dao.newSensor(b'DS18B20', b'28ffd58c65140116')
-    #dao.newSensor(b'DS18B20', b'28ffbef1691404c6')
-    #dao.newSensor(b'DS18B20', b'28ff498a65140189')
+    #dao.newSensor(b'DS18B20', b'2864edaa050000b0')
+    dao.newSensor(b'DS18B20', b'28ff753e651401b3')
+    dao.newSensor(b'DS18B20', b'28ffd58c65140116')
+    dao.newSensor(b'DS18B20', b'28ffbef1691404c6')
+    dao.newSensor(b'DS18B20', b'28ff498a65140189')
     dao.newWave(sComment='Essai du week-end 8 mai')
-    dao.commentSensor(1, 'test maison longue duree')
-    #dao.commentSensor(1, 'Pale du haut, au milieu')
-    #dao.commentSensor(2, "Pale du bas, a l'exterieur")
-    #dao.commentSensor(3, "dans l'isolation, a l'exterieur")
-    #dao.commentSensor(4, 'Pale du bas, au milieu')
-    Thread(target=workerDS, args=(iface, stop, mesure_reussie)).start()
+    #dao.commentSensor(1, 'test maison longue duree')
+    dao.commentSensor(1, 'Pale du haut, au milieu')
+    dao.commentSensor(2, "Pale du bas, a l'exterieur")
+    dao.commentSensor(3, "dans l'isolation, a l'exterieur")
+    dao.commentSensor(4, 'Pale du bas, au milieu')
+    diode = Value('b', True)
+    Thread(target=workerDS, args=(iface, stop, mesure_reussie, diode)).start()
     time.sleep(5)
     #onoffventilo = OnOff(pin, value_to_trigger, mode=True)
     #onoffpompe = OnOff(pin, value_to_trigger, mode=False)
@@ -124,20 +129,25 @@ if True:
     #Thread(target=onoff.run, args=(tempvalue, stop)).start()
     pin = "P9_31"
     onoffdiode = OnOff(pin, 0.5)
-    diode = Value('b', True)
+    #diode = Value('b', True)
     Thread(target=onoffdiode.run, args=(diode, stop)).start()
 
-
+    record = open('records.log', 'a', 1) #cant log to same file
+    record.write('\n\n\nStarting record logging'+time.ctime()+'\n')
     try:
         while True:
             #tempvalue.value = dsTemp[??]
             if mesure_reussie.value:
                 for i in range(len(iface.dsTemp)):
-                    dao.newMeasure(i+1, iface.dsTemp[i].GetTemperature())
-                diode.value = not diode.value
+                    if iface.dsTemp[i].bValidMeasure:
+                        dao.newMeasure(i+1, iface.dsTemp[i].GetTemperature())
+                    else:
+                        record.write(time.ctime() + " : CRC failed, was {} from {}\n".format(iface.dsTemp[i].bLastCRC, hexlify(iface.dsTemp[i].rom)))
+                #diode.value = not diode.value
             time.sleep(5)
     except KeyboardInterrupt:
         print('End of record')
         stop.value = True
-
+    record.write(time.ctime() + " : End of recording.")
+    record.close()
 

@@ -108,8 +108,7 @@ class OneWire:
     def ReadTemperatures(self):
         "Reads the temperature for all known sensors (wrapper for Sensor.ReadTemperature)"
         for sens in self.dSensors.values():
-            sens.ReadTemperature()
-
+            sens.ReadTemperature()                
 
 class Sensor:
     def CheckCRC(buf):
@@ -129,6 +128,8 @@ class Sensor:
         self.rom = rom
         self.wire = wire
         self.iLastTemp = None
+        self.bValidMeasure = False   ##if CRC check failed
+        self.bLastCRC = None        ##if CRC check failed, we can try retrieving data
 
     def ConvertTemperature(self):
         "Can be skiped if a ConvertTemperature() is done on the OneWire instead"
@@ -138,15 +139,20 @@ class Sensor:
         "Reads the scratchpad and returns temperature"
         DallasRomMatch(self.wire, self.rom)
         buf = DallasFuncScratchpadRead(self.wire)
+        self.bLastCRC = hexlify(buf)
         assert Sensor.CheckCRC(buf), "CRC on read scratchpad failed (was {}) from {}".format(hexlify(buf), hexlify(self.rom))
         iTemp, = struct.unpack('<h', buf[:2])
         # It is tempting to say that if iTemp == 0x0550 (85°C), then it is the reset value
         #  and measure should be discarded. However, DS18B20 can measure up to 100°C, so...
         #  and it is specific to DS18B20, not included in Dallas
         self.iLastTemp = iTemp
+        self.bValidMeasure = True
         return iTemp
     def ReadTemperature(self):
-        self.ReadTemperatureRaw()
+        try:
+            self.ReadTemperatureRaw()
+        except AssertionError as e:
+            self.bValidMeasure = False
         return self.GetTemperature()
     def GetTemperature(self):
         "Returns the last result of ReadTemperature()"
@@ -453,6 +459,8 @@ if __name__=='__main__':
     owire.ConvertTemperatures()
     owire.ReadTemperatures()
     owire.PrintSensors()
+    for sens in owire.dSensors.values():
+        sensor = sens
     # TODO: test le read Power supply pour les DS18B20-P et pour les autres...
 
 
