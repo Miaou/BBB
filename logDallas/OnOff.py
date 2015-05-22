@@ -11,6 +11,7 @@ class OnOff:
         self.debug = debug
         self.pin = pin
         gpio.setup(self.pin, gpio.OUT, initial = init_value)
+        self.state = 0
 
     def __del__(self):
         gpio.cleanup()
@@ -25,19 +26,23 @@ class OnOff:
             if value_to_check.value > self.trigger:
                 if self.mode:
                     gpio.output(self.pin, gpio.HIGH)
+                    self.state = 1
                     if self.debug:
                         print(self.pin, "set to HIGH")
                 else:
                     gpio.output(self.pin, gpio.LOW)
+                    self.state = 0
                     if self.debug:
                         print(self.pin, "set to LOW")
             else:
                 if self.mode:
                     gpio.output(self.pin, gpio.LOW)
+                    self.state = 0
                     if self.debug:
                         print(self.pin, "set to LOW")
                 else:
                     gpio.output(self.pin, gpio.HIGH)
+                    self.state = 1
                     if self.debug:
                         print(self.pin, "set to HIGH")
             time.sleep(period)
@@ -45,14 +50,31 @@ class OnOff:
         if self.debug:
             print("Ending OnOff checking")
 
+    def runperiodic(self, stop, periodOn, periodOff):
+        "Invert current state periodicly"
+        if self.debug:
+            print("Starting periodic checking")
+        while not stop.value:
+            gpio.output(self.pin, not self.state)
+            self.state = not self.state
+            if self.debug:
+                print(self.pin, "switched state")
+            
+            if self.state:
+                time.sleep(periodOn)
+            else:
+                time.sleep(periodOff)
+
+        if self.debug:
+            print("Ending OnOff checking")
 
 if __name__ == '__main__':
     from threading import Thread
-    test = OnOff("P9_16", 10,mode=False, debug=True)
-    trigger = Value('f', 0)
+    test = OnOff("P8_15", 0.5,mode=False, debug=True)
+    trigger = Value('b', 0)
     stop = Value('b', False)
     try:
-        Thread(target=test.run, args=(trigger, stop, 5)).start()
+        Thread(target=test.runperiodic, args=(stop, 3, 1)).start()
     except KeyboardInterrupt:
         print("That's it")
         stop.value = True

@@ -122,15 +122,18 @@ if True:
     diode = Value('b', True)
     Thread(target=workerDS, args=(iface, stop, mesure_reussie, diode)).start()
     time.sleep(5)
-    #onoffventilo = OnOff(pin, value_to_trigger, mode=True)
-    #onoffpompe = OnOff(pin, value_to_trigger, mode=False)
+    pinventilo = "P8_13"
+    pinpompe = "P8_15"
+    onoffventilo = OnOff(pinventilo, 40, mode=True)
+    onoffpompe = OnOff(pinpompe, 80, mode=False)
     #tempvalue = Value('f', 0)
     #rhvalue = Value('f', autre)
-    #Thread(target=onoff.run, args=(tempvalue, stop)).start()
-    pin = "P9_31"
-    onoffdiode = OnOff(pin, 0.5)
+    Thread(target=onoffventilo.runperiodic, args=(stop, 600, 3600)).start()
+    Thread(target=onoffpompe.runperiodic, args=(stop, 60, 43200)).start()
+    pindiode = "P8_11"
+    onoffdiode = OnOff(pindiode, 0.5)
     #diode = Value('b', True)
-    Thread(target=onoffdiode.run, args=(diode, stop)).start()
+    Thread(target=onoffdiode.run, args=(diode, stop, 1)).start()
 
     record = open('records.log', 'a', 1) #cant log to same file
     record.write('\n\n\nStarting record logging'+time.ctime()+'\n')
