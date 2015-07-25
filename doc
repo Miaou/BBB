@@ -19,6 +19,7 @@ git clone --bare . ../bbb.git
 
 Désactiver le reverse-DNS-lookup qui peut prendre des plombes, ouvrir /etc/ssh/sshd_config
 UseDNS no
+---> C'est pas UseDNS No <--- Sinon, on pourra plus se connecter en SSH et il faut mettre une Ubuntu sur mircoSD (http://elinux.org/Beagleboard:Ubuntu_On_BeagleBone_Black (sans faire l'étape "Main Process")) ou trouver un cable microHDMI
 
 Pour le Joystick,
 https://wiki.archlinux.org/index.php/joystick, mais on n'a pas xpad de déjà installé
