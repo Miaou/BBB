@@ -114,11 +114,12 @@ QUIT:
     // No, you can't.
 
     // Disable cycle count and clears it
-    LBCO    r7, c4, CTRREG_CONTROL, 1 // Takes lower byte of the CONTROL flag to clear the COUNTER_ENABLE bit
-    CLR     r7.t3
-    SBCO    r7, c4, CTRREG_CONTROL, 1 
-    MOV     r7, 0
-    SBCO    r7, c4, CTRREG_CYCLE, 4   // Clears CYCLE count
+    // !!! THIS IS ERRONEOUS !!! c4 -> CFG, not CTRL (which is PRUi dependant)
+    //LBCO    r7, c4, CTRREG_CONTROL, 1 // Takes lower byte of the CONTROL flag to clear the COUNTER_ENABLE bit
+    //CLR     r7.t3
+    //SBCO    r7, c4, CTRREG_CONTROL, 1 
+    //MOV     r7, 0
+    //SBCO    r7, c4, CTRREG_CYCLE, 4   // Clears CYCLE count
     
     
     MOV     r31.b0, INTC_VALID_STROBE | PRU0_ARM_INTERRUPT // Send notification to Host
