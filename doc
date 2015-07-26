@@ -102,6 +102,7 @@ et cat /sys/devices/bone_capemgr.9/slots doit ressembler à ca:
 8: ff:P-O-L Override Board Name,00A0,Override Manuf,BB-BONE-PRU     #echo BB-BONE-PRU aussi
 
 Dans crontab au minimum:
+(sauf les 2 premières, cf libDS18B20/libDallas-PRU/DOC_PRU pour faire plus propre)
 @reboot echo BB-BONE-PRU > /sys/devices/bone_capemgr.9/slots
 @reboot echo BB-I2C1 > /sys/devices/bone_capemgr.9/slots
 @reboot route add default gw 192.168.7.1  #ne fonctionne pas car le network n'est pas accessible au demarrage

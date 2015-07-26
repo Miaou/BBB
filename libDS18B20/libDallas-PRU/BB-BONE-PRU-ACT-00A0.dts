@@ -1,0 +1,26 @@
+/*
+* Activate the PRU, ONLY THAT...
+*/
+
+/dts-v1/;
+/plugin/;
+
+/{
+  compatible = "ti,beaglebone", "ti,beaglebone-black";
+
+  /* identification (part number can't be too long) */
+  part-number = "BB-BONE-PRU-ACT";
+  version = "00A0";
+
+  /* state the resources this cape uses */
+  exclusive-use = 
+    /* the hardware ip uses */
+    "pruss";
+
+  fragment@0{
+    target = <&pruss>;
+    __overlay__{
+      status = "okay";
+    };
+  };
+};
