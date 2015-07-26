@@ -17,6 +17,14 @@ Les problèmes d'heures
 Créer un clone pushable (a non-working directory) depuis la distance (sinon il n'y a que des pulls)
 git clone --bare . ../bbb.git
 
+Une fois que git clone https://github.com/Miaou/BBB
+Il faut initialiser les submodules (les repos liés à BBB)
+git submodule update --init --recursive
+
+Installer les paquets utiles (des makefile dépendent de 3.2 pour Python, éventuellement un MàJ à faire quand Debian aura 3.3 ou +)
+apt-get update
+apt-get install python3.2-dev
+
 Désactiver le reverse-DNS-lookup qui peut prendre des plombes, ouvrir /etc/ssh/sshd_config
 UseDNS no
 ---> C'est pas UseDNS No <--- Sinon, on pourra plus se connecter en SSH et il faut mettre une Ubuntu sur mircoSD (http://elinux.org/Beagleboard:Ubuntu_On_BeagleBone_Black (sans faire l'étape "Main Process")) ou trouver un cable microHDMI

@@ -1,0 +1,179 @@
+// PRU part of the Servo lib.
+// PAB, 2015
+
+
+
+#ifndef _dallas_HP_
+#define _dallas_HP_
+
+
+// We are on a AM335x, PRUSSv2
+
+
+// Memory offsets
+#define RAM_SELF        0x000000
+#define RAM_OTHER       0x002000
+#define RAM_BOTH        0x010000
+
+// Control registers
+// Base pointers
+#define RAM_CTRREG_0    0x022000
+#define RAM_CTRREG_1    0x024000
+// Some register offsets
+#define CTRREG_CONTROL  0x00
+#define CTRREG_CONTROL_COUNTER_ENABLE_MASK  0x08
+#define CTRREG_CYCLE    0x0C
+// Constant table offset (used to custom C24..C25, C26..C27)
+#define CTRREG_CTBIR_0  0x20
+#define CTRREG_CTBIR_1  0x24
+// Constant table offset (used to custom C28..C29, C30..C31)
+#define CTRREG_CTPPR_0  0x28
+#define CTRREG_CTPPR_1  0x2C
+
+// Configuration registers
+// Base pointer (C4 naturally points to RAM_CFG)
+#define RAM_CFG         0x026000
+// Some register offsets
+#define CFGREG_SYSCFG  0x04
+#define CFGREG_SYSCFG_STANDBY_INIT_MASK   0x10
+
+
+// Interrupt mappings (compatible with prussdrv)
+#define INTC_VALID_STROBE       0x20
+#define PRU0_PRU1_INTERRUPT     1
+#define PRU1_PRU0_INTERRUPT     2
+#define PRU0_ARM_INTERRUPT      3
+#define PRU1_ARM_INTERRUPT      4
+#define ARM_PRU0_INTERRUPT      5
+#define ARM_PRU1_INTERRUPT      6
+
+
+// ---------------------
+// GPIO registers offset
+#define GPIO0       0x44E07000
+#define GPIO1       0x4804C000
+// With useful registers (cf GPIO Registers of the AM335x techref)
+#define GPIO_OE             0x0134
+#define GPIO_DATAIN         0x0138
+#define GPIO_CLEARDATAOUT   0x0190
+#define GPIO_SETDATAOUT     0x0194
+// Please use this one as readonly.
+#define GPIO_DATAOUT        0x013C
+
+
+// -----------------
+// Macro definitions
+
+
+// Enables communication with external memory (pointers > 0x080000)
+.macro  ENABLE_OCP 
+.mparam a=r0//, b=r1
+    //MOV     a, RAM_CFG              // SYSCFG register adress in the CFG memory
+    LBCO    a, c4, CFGREG_SYSCFG, 1 // Get the SYSCFG register
+    CLR     a.t4                    // Clears the STANDBY_INIT bit to enable the OCP master ports
+    SBCO    a, c4, CFGREG_SYSCFG, 1 // Sets the SYSCFG register
+.endm
+
+
+// Configure C28 for PRU 0 (local customizable pointer)
+//  to point to a local specified offset (constant offset,& 0x00FFFF00)
+.macro  CONFIGURE_C28
+.mparam off, a=r0, b=r1
+    MOV     a, off>>8
+    MOV     b, RAM_CTRREG_0
+    SBBO    a, b, CTRREG_CTPPR_0, 2
+.endm
+
+
+// Enables the cycle counter, mostly to time GPIO interactions
+// (counts up to 21 seconds)
+// (C28 must point to RAM_CTRREG_i)
+.macro START_CYCLE_COUNT
+.mparam reg=r0
+    RESET_CYCLE_COUNT reg
+    RESUME_CYCLE_COUNT reg
+.endm
+
+
+// Resumes the cycle count, without reset the cycle count
+// (C28 must point to RAM_CTRREG_i)
+.macro RESUME_CYCLE_COUNT
+.mparam reg=r0
+    // And enables the CYCLE COUNT
+    LBCO    reg, c28, CTRREG_CONTROL, 1 // Takes byte of the CONTROL flag to set the COUNTER_ENABLE bit
+    SET     reg.t3
+    SBCO    reg, c28, CTRREG_CONTROL, 1
+.endm
+
+
+// Pause the counter, without reset of the cycle count
+// (C28 must point to RAM_CTRREG_i)
+.macro SUSPEND_CYCLE_COUNT
+.mparam reg=r0
+    // Disable cycle count and clears it
+    LBCO    reg, c28, CTRREG_CONTROL, 1 // Get byte of the CONTROL flag, clears the COUNTER_ENABLE bit
+    CLR     reg.t3
+    SBCO    reg, c28, CTRREG_CONTROL, 1
+.endm
+
+
+// Resets cycle count (optional)
+// (C28 must point to RAM_CTRREG_i)
+.macro RESET_CYCLE_COUNT // Can only be when COUNTER disabled
+.mparam reg=r0, value=2 // Value is a OP(0xFFFFFFFF)
+    // Clears cycle count
+    MOV     reg, value
+    SBCO    reg, c28, CTRREG_CYCLE, 4
+.endm
+
+
+// Reset cycle count (even if counter is running),
+//  and initializes the counter to account for the time lost because of this call...
+//  (to be tested and verified)
+.macro RESET_CYCLE_COUNT_HOT
+.mparam reg=r0
+    SUSPEND_CYCLE_COUNT reg
+    RESET_CYCLE_COUNT   reg, 5
+    RESUME_CYCLE_COUNT  reg
+.endm
+  
+    
+// Clean QUIT
+.macro SIGNAL_AND_HALT
+    SUSPEND_CYCLE_COUNT
+    RESET_CYCLE_COUNT
+    // Send notification to Host
+    MOV     r31.b0, INTC_VALID_STROBE | PRU0_ARM_INTERRUPT
+    // Halts (...)
+    HALT
+.endm
+
+// ---------------
+// Servos specific
+
+// Menu constants
+#define COMMAND_CONTINUE    0
+#define COMMAND_UPDATE      1
+#define COMMAND_QUIT        2
+#define FETCH_NO_CHANGE     COMMAND_CONTINUE
+#define FETCH_CHANGE        COMMAND_UPDATE
+#define FETCH_QUIT          COMMAND_QUIT
+
+// Servo's offset (in RAM_SHARED), number of available servos, sizeof(SERVO)
+#define P_HEADER        0x0100
+#define S_HEADER        0x0C
+#define P_SERVOS        0x010C
+#define N_SERVOS        0x80
+// It's nice to parameterize the length of the struct of a servo,
+//  but in practize, registers were chosen to match that size,
+//  so it is not very possible to change it anyways...
+//  (design flaw, I could have used r20++ to avoid that)
+#define S_SERVO         0x0C
+#define MASK_FETCH      0x1000
+
+
+#endif // _dallas_HP_
+
+
+
+

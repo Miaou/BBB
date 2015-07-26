@@ -1,0 +1,67 @@
+Projet de pilotage de l'araignée via une seule carte, en utilisant le BBB (18 servomoteurs).
+
+
+But : générer des signaux PWM-like de période 20ms (50Hz), de taux de charge 5 à 10% (600µs -> 2500µs)
+
+Solutions envisagées :
+- PWM hardware, mais il n'y a pas assez de ports
+- PWM software, mais contrôlé par une appli sous Linux, on risque d'avoir une précision médiocre
+- PWM soft en mode noyau, mais je ne sais pas faire ! Serait probablement la solution la plus propre... Injecter un driver via modprobe qui puisse avoir un timing très précis
+- PRU, car le PRU c'est le temps réel, donc bonne précision.
+
+Le PRU (cf. ./DOC_PRU) peut permettre un accès direct aux GPIOs
+- sauf que soit GPO soit GPI
+- sauf que seulement 32 GPO, 30 GPI par PRU
+- sauf que parmi ces 3x, seulement qquns sont physiquement rendus accessibles via les headers sur la BBB (10 pour le PRU0 et 14 pour le 1)
+- ce qui fait que pour les 18 servos de l'araignée, il faudra utiliser les 2 PRU en //
+- il faut aussi dire (via un device tree) au kernel qu'on utilise ces pins pour le PRU, donc le reste du syst ne peut y accéder
+
+Le PRU permet aussi d'accéder aux GPIOs en mode standard
+- peut accéder à tous les GPIOs physiquement accessibles
+- sauf que c'est bien plus lent
+
+
+Dimensionnement du code :
+- note de la doc tech des HS-465MG : "dead band width" à 8µs, ce qui me semble veut dire que ce n'est pas la peine de descendre en dessous des 8µs en précision sur notre signal...
+- en gros, la plage de commande est de 500µs pour 0° à 2500µs pour 180°
+- donc 2000µs avec des pas de temps de 8µs donne ~250 pas de réglage des servos (0.72°)
+- nombre d'instructions par 8µs : 8000ns/5ns = 1600
+- avec 18 servos : 88 instructions par servo + 16 de rab
+
+Donc si on fournit un code qui écrit la valeur de chaque signal en moins de 88 instructions, on est bon
+-> Solution qui utilise les GPIOs standards
+-> Solution qui va sampler le temps avant de décider si il tient le GPO en haut ou le fait passer en bas, avec un tps d'exec qui sera inférieure (mais non contrôlée) à 8µs pour les 18 GPIOs
+  - (i.e. la boucle principale aura un temps d'exécution aléatoire < 1600 instructions)
+
+
+Dans la suite, j'appellerai solution A celle qui utilise les GPIO en mode standard, et solution B celle qui utilise les GPO à pleine vitesse.
+
+Il serait intéressant de faire la solution B, mais je pense que la synchro des 2 PRU doit être pénible.
+
+Les deux solutions ne seront pas headers-compatible.
+Solution A positionnera les fils de signaux sur les headers P8_29 à P8_46 (pas moyen de les mettre verticaux car il y a la plage des pins pour la mémoire eMMC interne qu'on utilise, cf le bas de http://beagleboard.org/support/bone101).
+Solution B positionnera les fils où elle peut, probablement sur les deux headers.
+
+
+
+Solution A :
+- configuration du pinmuxing pour dire à la BBB de rendre ces pins accessibles via GPIO
+  - unload le device tree HDMI pour libérer les GPIO
+    - ouvrir la partition bootable (depuis le Windows sur lequel il est branché en USB, sinon ...)
+    - modifier le fichier uEnv.txt, décommenter la partie Disable HDMI
+    - (reboot)
+  - les mettre en mode 7 via le device tree
+    - devrait se faire tout seul vu que l'HDMI est désactivé
+    - vérifier que c'est bon : utiliser http://www.valvers.com/embedded-linux/beaglebone-black/step04-gpio/
+  - il faut quand même refaire un device tree pour activer le PRU (cf DOC_PRU)
+- faisage du soft pour pouvoir personnaliser l'ordre des PIN à l'exécution
+- format dans la mémoire du PRU
+  - à partir de 0x010100 (SHARED+ 0x0100)
+  - COMMAND: 4 octets (seulement qq commandes QUIT UPDATE, mais padding)
+  - N_SERVO: 4 octets (4o : facilité de lecture en mémoire)
+  - PERIOD: 4 octets (en nb de cycles PRU (normalement 4 000 000))
+  - donc en 0x02+iServo*sizeof(SERVO)
+    - GPIO base addr: 4o
+    - GPIO bitmask: 4o
+    - T falldown en nombre de cycle (0 pour ne plus forcer le servo): en nb de cycles (max~2.5ms=2500000ns=500k cycles): 4o
+  - maintenant il y a aussi la partie où le programme controlant la lib va écrire.
