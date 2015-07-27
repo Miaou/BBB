@@ -105,9 +105,6 @@ FETCH_NEW_DATA:
     MOV     r11, RAM_BOTH|P_HEADER
     MOV     r1, COMMAND_CONTINUE// Clears the CHANGE state of the command, by the way...
     SBBO    r1, r11, 0, 12
-    // Also clears the FETCH_CHANGE to FETCH_NOCHANGE in fetch zone
-    MOV     r1, FETCH_NO_CHANGE
-    SBBO    r1, r0, 0, 4
 
     // Now copy the servo data, and clear the GPO signal
     MOV     r5, RAM_BOTH|P_SERVOS
@@ -127,6 +124,9 @@ FETCH_NEW_DATA:
     ADD     r12, r12, S_SERVO
     QBNE    copy_servo, r2, 0
 
+    // Clears the FETCH_CHANGE to FETCH_NOCHANGE in fetch zone, to signal that the read is finished.
+    MOV     r1, FETCH_NO_CHANGE
+    SBBO    r1, r0, 0, 4
 
     // Finally waits for the true end of the period
   fetch_finish_period:

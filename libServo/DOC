@@ -79,4 +79,7 @@ Test avec les 18 commandes :
   - sur le 20ms de période : ...
 - la période semble ne pas grandir quand on attribue des nouvelles valeurs en mémoire
   - c'était le but de faire ça en même temps ^^
-- RAPPEL : coût CPU : 0%
+- RAPPEL : coût CPU de la lib : 0%
+- coût CPU du prg qui contrôle la lib :
+  - l'interface Python (pour l'instant bas-niveau) prend ~9% CPU pour un flux "continu" de commandes
+- stabilité : à tester, laissons tourner

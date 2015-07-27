@@ -126,6 +126,13 @@ class ServoController:
         lTimes must match in size the lMap given to this instance of ServoController
         '''
         assert len(lTimes)==len(self.lMap), "More (or less) servos than known pins, aborting"
+        
+        # If a write setTimes occurs before PRU had time to fetch the last one, skip!
+        prussmem = self.pruface.getMappedMem()
+        pMem = PruInterface.MASK_FETCH|PruInterface.P_HEADER
+        iCurStatus, = struct.unpack('<I', prussmem[pMem:pMem+4]) # This value acts as a semaphore...
+        if iCurStatus != ServoController.FETCH_NO_CHANGE:
+            return
 
         # I create a buffer, then I write it to the PRU.
         # Begins with the header, and then n*servo
@@ -137,7 +144,6 @@ class ServoController:
             buf += struct.pack('<III', base, mask, int(t*200))
         
         # And writes to the PRU memory
-        prussmem = self.pruface.getMappedMem()
         pMem = PruInterface.MASK_FETCH|PruInterface.P_HEADER
         prussmem[pMem:pMem+len(buf)] = bytes(buf)
 
@@ -156,12 +162,7 @@ class ServoController:
 # Basic testing, and acts as a usecase
 if __name__=='__main__':
     pruface = PruInterface('./servos.bin')
-    sctl = ServoController(pruface, [PORT_TO_MASK[(8,29+i)] for i in range(18)]+[PORT_TO_MASK[(9,13)]],
-                                     #PORT_TO_MASK[(8,30)]],
-                           20000) # 20ms
-    #sctl.setTimes([800,850])
-    sctl.setTimes([800]*19)
-    #sctl = ServoController(pruface, [PORT_TO_MASK[(9,13)],PORT_TO_MASK[(8,29)]][::-1], 20000)
-    #sctl.setTimes([800,900])
+    sctl = ServoController(pruface, [PORT_TO_MASK[(8,29+i)] for i in range(18)], 20000) # 20ms
+    sctl.setTimes([800]*18)
 
 
