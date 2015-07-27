@@ -78,7 +78,7 @@ PORT_TO_MASK = {(8, 29): (BASE_ADDR_GPIO[2], 1<<23), # So P8_29 is gpio2_23
                 (8, 41): (BASE_ADDR_GPIO[2], 1<<10),
                 (8, 42): (BASE_ADDR_GPIO[2], 1<<11),
                 (8, 43): (BASE_ADDR_GPIO[2], 1<<8),
-                (8, 44): (BASE_ADDR_GPIO[2], 1<<8),
+                (8, 44): (BASE_ADDR_GPIO[2], 1<<9),
                 (8, 45): (BASE_ADDR_GPIO[2], 1<<6),
                 (8, 46): (BASE_ADDR_GPIO[2], 1<<7),
                 (9, 13): (BASE_ADDR_GPIO[0], 1<<31)}
@@ -156,9 +156,12 @@ class ServoController:
 # Basic testing, and acts as a usecase
 if __name__=='__main__':
     pruface = PruInterface('./servos.bin')
-    sctl = ServoController(pruface, [PORT_TO_MASK[(8,29)],
-                                     PORT_TO_MASK[(8,30)]],
+    sctl = ServoController(pruface, [PORT_TO_MASK[(8,29+i)] for i in range(18)]+[PORT_TO_MASK[(9,13)]],
+                                     #PORT_TO_MASK[(8,30)]],
                            20000) # 20ms
-    sctl.setTimes([800,850])
+    #sctl.setTimes([800,850])
+    sctl.setTimes([800]*19)
+    #sctl = ServoController(pruface, [PORT_TO_MASK[(9,13)],PORT_TO_MASK[(8,29)]][::-1], 20000)
+    #sctl.setTimes([800,900])
 
 

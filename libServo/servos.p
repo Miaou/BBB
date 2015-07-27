@@ -91,9 +91,9 @@ FETCH_NEW_DATA:
     // Sames adresses, but with maks MASK_FETCH
     MOV     r0, RAM_BOTH|MASK_FETCH|P_HEADER
     MOV     r10, r3             // Backup current period length
+    MOV     r4, FETCHING_WINDOW
     ADD     r10, r10, r4        // Sets back to the real current period length, to finish fetch in time
     LBBO    r1, r0, 0, 12       // Loads r1=COMMAND, r2=nServo, and r3=nPeriod
-    MOV     r4, FETCHING_WINDOW
     // Parsing new command
     QBEQ    fetch_finish_period, r1, FETCH_NO_CHANGE
     QBNE    QUIT, r1, FETCH_CHANGE
@@ -118,9 +118,12 @@ FETCH_NEW_DATA:
     SBBO    r6, r5, 0, S_SERVO  // And put it back in its new place
     SBBO    r7, r6, r9, 4       // And clears set the GPO signal to low
     LBBO    r14, r6, r13, 4     // Get the current GPIO_OE register
-    XOR     r14, r14, r7        // Prepare to clear the bit
+    NOT     r7, r7              // Prepare to clear the bit: OE & (not mask)
+    AND     r14, r14, r7
     SBBO    r14, r6, r13, 4     // And sets the GPIO to OUTPUT
     SUB     r2, r2, 1
+    ADD     r5, r5, S_SERVO
+    ADD     r12, r12, S_SERVO
     QBNE    copy_servo, r2, 0
 
 
