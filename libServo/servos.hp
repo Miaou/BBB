@@ -59,6 +59,13 @@
 #define GPIO_SETDATAOUT     0x0194
 // Please use this one as readonly.
 #define GPIO_DATAOUT        0x013C
+// These to activate GPIO submodules (lol, weird)
+//  (Clock Module Peripheral Registers)
+//  (see ENABLE_GPIO2 macro)
+#define CM_PER         0x44E00000
+#define CM_PER_GPIO1_CLKCTRL 0xAC
+#define CM_PER_GPIO2_CLKCTRL 0xB0
+#define CM_PER_GPIO3_CLKCTRL 0xB4
 
 
 // -----------------
@@ -147,6 +154,19 @@
     // Halts (...)
     HALT
 .endm
+
+
+// GPIO clock activation
+//  (could parametrize the GPIOi with i, but, ...)
+// Set the second bit of a specified register, far away in memory
+.macro ENABLE_GPIO2
+.mparam a=r0, b=r1
+    MOV     a, 0x02     // ENABLE code to store in the register
+    MOV     b, CM_PER   // Base address of the register
+    SBBO    a, b, CM_PER_GPIO2_CLKCTRL, 1 // Writes only one byte...
+.endm
+
+
 
 // ---------------
 // Servos specific

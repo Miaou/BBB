@@ -65,3 +65,18 @@ Solution A :
     - GPIO bitmask: 4o
     - T falldown en nombre de cycle (0 pour ne plus forcer le servo): en nb de cycles (max~2.5ms=2500000ns=500k cycles): 4o
   - maintenant il y a aussi la partie où le programme controlant la lib va écrire.
+
+
+-----------------
+!!! RESULTATS !!!
+-----------------
+Après avoir passés tous les problèmes techniques, et les affreux bugs... ça marche !
+Test avec les 18 commandes :
+- résolution constatée à l'oscillo : ~1.2µs
+  - (les commandes entre 851.7 et 852.8 donnent la même valeur)
+- répétabilité :
+  - sur la largeur d'un signal : invisible avec l'oscillo choisi (< 0.1µs)
+  - sur le 20ms de période : ...
+- la période semble ne pas grandir quand on attribue des nouvelles valeurs en mémoire
+  - c'était le but de faire ça en même temps ^^
+- RAPPEL : coût CPU : 0%

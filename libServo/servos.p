@@ -19,6 +19,7 @@
 CONFIG:
     CONFIGURE_C28 RAM_CTRREG_0
     ENABLE_OCP
+    ENABLE_GPIO2
     START_CYCLE_COUNT
     // Resets shared part of the RAM
     // Header is 12 bytes
