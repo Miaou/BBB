@@ -11,6 +11,8 @@
 # Currently not implemented...
 # However, it should very better than 8µs/servo while controlling 18 servos.
 
+# For now, the lib does not store the commands, all the servos has to be set in oneshot
+
 
 
 import struct
@@ -101,6 +103,9 @@ class ServoController:
         self.pruface = pruface
         self.iPeriod = int(tPeriod*200)
         self.struct = struct # Keeps a link to struct because I need it in __del__
+        # Calibration, as given somewere: 0° -> 900, 180° -> 2100
+        # Only used by setAngles
+        self.lCalib = [((0,900),(180,2100))]*len(lMap)
 
     def __del__(self):
         # Tells the PRU program to end (optional)
@@ -125,7 +130,7 @@ class ServoController:
         Speaks to the PRU, and writes the times (given in µs, float or int, 0 for no command)
         lTimes must match in size the lMap given to this instance of ServoController
         '''
-        assert len(lTimes)==len(self.lMap), "More (or less) servos than known pins, aborting"
+        assert len(lTimes)==len(self.lMap), "More (or less) commands than known pins, aborting"
         
         # If a write setTimes occurs before PRU had time to fetch the last one, skip!
         prussmem = self.pruface.getMappedMem()
@@ -154,7 +159,37 @@ class ServoController:
     # This lib should now be extended to accept calibration and angle spec instead of time...
     #  calibration: actual min max times for each servo
     #  angle spec: 0° -> min time, 180° -> max time
-    #def setAngles(self, lAngles) -> calibration may be given in the __init__()
+    def setAngles(self, lAngles):
+        '''
+        Calculates times command corresponding to the given angles for each servo
+        lAngles must match in size the lMap given to this instance of ServoController
+        Angles are in what-you-unit-you-want, but be consistent
+        '''
+        assert len(lAngles)==len(self.lMap), "More (or less) commands than known pins, aborting"
+        
+        #(t1-t0)/(a1-a0)*(a-a0)+t0
+        lTimes = []
+        for i,a in enumerate(lAngles):
+            (a0,t0),(a1,t1) = self.lCalib[i]
+            ta,tb = (t0,t1) if t0<t1 else (t1,t0)
+            t = max( min( t0 + (a-a0)*(t1-t0)/(a1-a0), tb ), ta )
+            lTimes.append(t)
+        self.setTimes(lTimes)
+
+
+    def setCalibration(self, lCalib):
+        '''
+        Overrides previous (or default) calibration
+        Specify the minimum angle and corresponding timing (µs), as well as the max angle and timing:
+        lCalib = [((minAngle, minTime), (maxAngle, maxTime)), ...]
+        lCalib must match in size the lMap given to this instance of ServoController
+        This function checks the monotony of the angles and times
+        Angles are in what-you-unit-you-want, but be consistent
+        '''
+        assert len(lCalib)==len(self.lMap), "More (or less) calibration data than known pins, aborting"
+        for i,((a0,t0),(a1,t1)) in enumerate(lCalib):
+            assert a0<=a1, "Calib data not ordered for tup {}".format(i) # Or there were not enough elements in lCalib[i]
+        self.lCalib = lCalib[:]
 
 
 
