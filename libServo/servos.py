@@ -181,7 +181,7 @@ class ServoController:
 # Basic testing, and acts as a usecase
 if __name__=='__main__':
     pruface = PruInterface('./servos.bin')
-    sctl = ServoController(pruface, lServos, 15000) # 20ms
+    sctl = ServoController(pruface, lServos, 20000) # 20ms
     #sctl.setTimes([800]*18)
     sctl.setAngles([0,0,0])
 
