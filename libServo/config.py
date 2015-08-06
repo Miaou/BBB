@@ -6,7 +6,8 @@
 from math import floor, ceil
 
 
-
+# TODO: take into account real angle limits of the servos
+#  because it is not 0..180 and 0 is shifted, but 180 could be less or more
 class ServoConfig:
     '''
     Holds the configuration of a pin.
@@ -28,7 +29,7 @@ class ServoConfig:
     def getPort(self): return self.tPort
     def getTime(self, angle):
         '''Returns control time in µs to obtain angle in ° in the shifted domain'''
-        shAng = angle-self.fShift
+        shAng = angle-self.fShift*self.iDir
         # May be made "fault" tolerant, and shAng = min(180, max(0, shAng)) to avoid 180.0001 problems...
         assert shAng >= 0 and shAng <= 180, 'Given angle should be in servo\'s domain'
         a,b = self.tCalib[::self.iDir]
@@ -40,16 +41,17 @@ class ServoConfig:
         Calculates tje angle%360° to obtain it in the domain, if possible.
         Returns None if angle is not found...
         '''
-        k1 = ceil((self.fShift-angle)/(360))
-        k2 = floor((self.fShift+180-angle)/(360))
-        return (k1==k2 and angle+360*k1) or None
+        k1 = ceil((self.fShift*self.iDir-angle)/(360))
+        k2 = floor((self.fShift*self.iDir+180-angle)/(360))
+        if k1==k2:
+            return angle+360*k1
+        return None
         
 
 
-lServos = [ServoConfig((8,30), (550,2500), 1, -90),
-           ServoConfig((8,32), (550,2500), 1, -90),
-           ServoConfig((8,34), (550,2500), 1, 19)]
-
+lServos = [ServoConfig((8,30), (550,2500), +1, -90),
+           ServoConfig((8,32), (520,2450), -1, 90), # Done
+           ServoConfig((8,34), (520,2400), -1, 21)] # Done
 
 
 

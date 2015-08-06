@@ -169,7 +169,10 @@ class ServoController:
         #(t1-t0)/(a1-a0)*(a-a0)+t0
         lTimes = []
         for i,ang in enumerate(lAngles):
-            lTimes.append(self.lCfgServos[i].getTime(ang))
+            if ang == None:
+                lTimes.append(0)
+            else:
+                lTimes.append(self.lCfgServos[i].getTime(ang))
         self.setTimes(lTimes)
 
 
@@ -178,8 +181,8 @@ class ServoController:
 # Basic testing, and acts as a usecase
 if __name__=='__main__':
     pruface = PruInterface('./servos.bin')
-    sctl = ServoController(pruface, lServos, 20000) # 20ms
+    sctl = ServoController(pruface, lServos, 15000) # 20ms
     #sctl.setTimes([800]*18)
-    sctl.setAngles([0]*len(lServos))
+    sctl.setAngles([0,0,0])
 
 
