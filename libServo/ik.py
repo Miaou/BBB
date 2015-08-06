@@ -4,52 +4,14 @@
 # Inverse Kinematics, not Kinematic Inversion...
 
 
-from math import atan, acos, sqrt, pi, cos, sin, floor, ceil
+from math import atan, acos, sqrt, pi, cos, sin
+
 
 
 # Angles are in radians inside the IK,
 #  but are in degrees everywhere else, to ease readability of the servo control
 DEG = lambda ang:180*ang/pi
-PIPI = lambda ang:(ang<-pi and PIPI(ang+2*pi)) or (ang>pi and PIPI(ang-2*pi)) or ang
 
-
-class ServoConfig:
-    '''This should move elsewhere, but I don't know where exactly yet'''
-    def __init__(self, tPin, tCalib, iDirection, fShift):
-        '''
-        Holds the configuration of a pin.
-        tPin: P8_29 -> (8,29)
-        tCalib: times for 0° and 180° in µs -> (600, 2400)
-        iDirection: +1 for 0° is 600 and 180° is 2400, -1 for the opposite direction
-        fShift: shifts the domain of the servo e.g. -90 -> servo is now in [-90;90] angles
-        '''
-        #assert tPin in PORT_TO_MASK, 'Servo should be controllable through a known pin'
-        assert tCalib[0] < tCalib[1], 'Use iDirection to reverse the domain of the servo'
-        assert iDirection in (-1,1), 'Direction should be +1 or -1'
-        self.tPin = tPin
-        self.tCalib = tCalib
-        self.iDir = iDirection
-        self.fShift = fShift
-        
-    def getShift(self): return self.fShift
-    def getTime(self, angle):
-        '''Returns control time in µs to obtain angle in ° in the shifted domain'''
-        shAng = angle-self.fShift
-        # May be made "fault" tolerant, and shAng = min(180, max(0, shAng)) to avoid 180.0001 problems...
-        assert shAng >= 0 and shAng <= 180, 'Given angle should be in servo\'s domain'
-        a,b = self.tCalib[::self.iDir]
-        return a+(b-a)*shAng/180
-    #def isInDomain(self, angle):
-    #    return angle >= 0+self.fShift and angle <= 180+self.fShift
-    def findAngleInDomain(self, angle):
-        '''
-        Calculates tje angle%360° to obtain it in the domain, if possible.
-        Returns None if angle is not found...
-        '''
-        k1 = ceil((self.fShift-angle)/(360))
-        k2 = floor((self.fShift+180-angle)/(360))
-        return (k1==k2 and angle+360*k1) or None
-        
 
 
 def ikLegPlane(x,y, servoFemur,servoTibia, lFemur=76.2,lTibia=114.3):
@@ -88,8 +50,8 @@ def ikLegPlane(x,y, servoFemur,servoTibia, lFemur=76.2,lTibia=114.3):
 
 
 if __name__=='__main__':
-    servoFemur = ServoConfig((8,30), (550,2500), 1, -90)
-    servoTibia = ServoConfig((8,31), (550,2500), 1, 19)
+    from config import lServos
+    servoFemur,servoTibia = lServos[1:3]
 
 
 

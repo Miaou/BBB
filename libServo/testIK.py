@@ -10,7 +10,8 @@ import pygame
 import time
 from math import pi, cos, sin
 import random
-from ik import ikLegPlane, ServoConfig
+from ik import ikLegPlane
+from config import lServos
 
 
 
@@ -117,8 +118,8 @@ def plotRandomIK(N=10000, bNoFill=False):
             pygame.display.flip()
         N -= 1
 
-servoFemur = ServoConfig((8,30), (550,2500), 1, -90)
-servoTibia = ServoConfig((8,31), (550,2500), 1, 19)
+servoFemur = lServos[1]
+servoTibia = lServos[2]
 #plotAccessibleRange(N=200, fSleep=.001)
 plotRandomIK(100000)
 plotRandom(3000)
