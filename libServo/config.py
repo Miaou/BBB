@@ -54,28 +54,28 @@ class ServoConfig:
 #           ServoConfig((8,34), (520,2400), -1, 21)] # Done
 lServos = [# Rear Right
            ServoConfig((8, 7), (550,2500), -1, +90),
-           ServoConfig((8, 9), (520,2450), +1, -90),
-           ServoConfig((8,11), (520,2400), +1, -21),
+           ServoConfig((8, 9), (690,2656), +1, -90),
+           ServoConfig((8,11), (741,2653), +1, -25.7),
            # Rear Left
            ServoConfig((8, 8), (550,2500), +1, -90),
-           ServoConfig((8,10), (520,2450), -1, +90),
-           ServoConfig((8,12), (520,2400), -1, +21),
+           ServoConfig((8,10), (512,2416), -1, +90),
+           ServoConfig((8,12), (499,2399), -1, +20.2),
            # Middle Right
            ServoConfig((9,11), (550,2500), -1, +90),
-           ServoConfig((9,13), (520,2450), +1, -90),
-           ServoConfig((9,15), (520,2400), +1, -21),
+           ServoConfig((9,13), (647,2542), +1, -90),
+           ServoConfig((9,15), (671,2574), +1, -19.9),
            # Middle Left
            ServoConfig((9,12), (550,2500), +1, -90),
-           ServoConfig((9,14), (520,2450), -1, +90),
-           ServoConfig((9,16), (520,2400), -1, +21),
+           ServoConfig((9,14), (515,2458), -1, +90),
+           ServoConfig((9,16), (558,2494), -1, +22.1),
            # Front Right
            ServoConfig((8,13), (550,2500), -1, +90),
-           ServoConfig((8,15), (520,2450), +1, -90),
-           ServoConfig((8,17), (520,2400), +1, -21),
+           ServoConfig((8,15), (661,2574), +1, -90),
+           ServoConfig((8,17), (677,2555), +1, -22.0),
            # Front Left
            ServoConfig((8,14), (550,2500), +1, -90),
-           ServoConfig((8,16), (520,2450), -1, +90),
-           ServoConfig((8,18), (520,2400), -1, +21),
+           ServoConfig((8,16), (559,2499), -1, +90),
+           ServoConfig((8,18), (650,2541), -1, +22.7),
            ]
 
 
