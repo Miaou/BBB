@@ -31,7 +31,7 @@ class ServoConfig:
         '''Returns control time in µs to obtain angle in ° in the shifted domain'''
         shAng = angle-self.fShift*self.iDir
         # May be made "fault" tolerant, and shAng = min(180, max(0, shAng)) to avoid 180.0001 problems...
-        assert shAng >= 0 and shAng <= 180, 'Given angle should be in servo\'s domain'
+        assert shAng >= 0 and shAng <= 180, 'Given angle should be in servo\'s domain (computed {})'.format(shAng)
         a,b = self.tCalib[::self.iDir]
         return a+(b-a)*shAng/180
     #def isInDomain(self, angle):
@@ -49,10 +49,34 @@ class ServoConfig:
         
 
 
-lServos = [ServoConfig((8,30), (550,2500), +1, -90),
-           ServoConfig((8,32), (520,2450), -1, 90), # Done
-           ServoConfig((8,34), (520,2400), -1, 21)] # Done
-
+#lServos = [ServoConfig((8,30), (550,2500), +1, -90),
+#           ServoConfig((8,32), (520,2450), -1, 90), # Done
+#           ServoConfig((8,34), (520,2400), -1, 21)] # Done
+lServos = [# Rear Right
+           ServoConfig((8, 7), (550,2500), -1, +90),
+           ServoConfig((8, 9), (520,2450), +1, -90),
+           ServoConfig((8,11), (520,2400), +1, -21),
+           # Rear Left
+           ServoConfig((8, 8), (550,2500), +1, -90),
+           ServoConfig((8,10), (520,2450), -1, +90),
+           ServoConfig((8,12), (520,2400), -1, +21),
+           # Middle Right
+           ServoConfig((9,11), (550,2500), -1, +90),
+           ServoConfig((9,13), (520,2450), +1, -90),
+           ServoConfig((9,15), (520,2400), +1, -21),
+           # Middle Left
+           ServoConfig((9,12), (550,2500), +1, -90),
+           ServoConfig((9,14), (520,2450), -1, +90),
+           ServoConfig((9,16), (520,2400), -1, +21),
+           # Front Right
+           ServoConfig((8,13), (550,2500), -1, +90),
+           ServoConfig((8,15), (520,2450), +1, -90),
+           ServoConfig((8,17), (520,2400), +1, -21),
+           # Front Left
+           ServoConfig((8,14), (550,2500), +1, -90),
+           ServoConfig((8,16), (520,2450), -1, +90),
+           ServoConfig((8,18), (520,2400), -1, +21),
+           ]
 
 
 

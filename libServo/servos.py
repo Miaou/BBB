@@ -66,7 +66,19 @@ class PruInterface:
 BASE_ADDR_GPIO = [0x44E07000, 0x4804C000, 0x481AC000, 0x481AE000]
 # SOME mapping (port, pin) to (gpiobase, bitmask) when they are in mode 7
 # (see a table like http://www.element14.com/community/servlet/JiveServlet/download/76417-112705/pinmux.pdf to find the others)
-PORT_TO_MASK = {(8, 29): (BASE_ADDR_GPIO[2], 1<<23), # So P8_29 is gpio2_23
+PORT_TO_MASK = {(8, 7): (BASE_ADDR_GPIO[2], 1<<2),
+                (8, 8): (BASE_ADDR_GPIO[2], 1<<3),
+                (8, 9): (BASE_ADDR_GPIO[2], 1<<5), # So P8_9 is gpio2_5
+                (8, 10): (BASE_ADDR_GPIO[2], 1<<4),
+                (8, 11): (BASE_ADDR_GPIO[1], 1<<13),
+                (8, 12): (BASE_ADDR_GPIO[1], 1<<12),
+                (8, 13): (BASE_ADDR_GPIO[0], 1<<23),
+                (8, 14): (BASE_ADDR_GPIO[0], 1<<26),
+                (8, 15): (BASE_ADDR_GPIO[1], 1<<15),
+                (8, 16): (BASE_ADDR_GPIO[1], 1<<14),
+                (8, 17): (BASE_ADDR_GPIO[0], 1<<27),
+                (8, 18): (BASE_ADDR_GPIO[2], 1<<1),
+                (8, 29): (BASE_ADDR_GPIO[2], 1<<23),
                 (8, 30): (BASE_ADDR_GPIO[2], 1<<25),
                 (8, 31): (BASE_ADDR_GPIO[0], 1<<10),
                 (8, 32): (BASE_ADDR_GPIO[0], 1<<11),
@@ -84,7 +96,12 @@ PORT_TO_MASK = {(8, 29): (BASE_ADDR_GPIO[2], 1<<23), # So P8_29 is gpio2_23
                 (8, 44): (BASE_ADDR_GPIO[2], 1<<9),
                 (8, 45): (BASE_ADDR_GPIO[2], 1<<6),
                 (8, 46): (BASE_ADDR_GPIO[2], 1<<7),
-                (9, 13): (BASE_ADDR_GPIO[0], 1<<31)}
+                (9, 11): (BASE_ADDR_GPIO[0], 1<<30),
+                (9, 12): (BASE_ADDR_GPIO[1], 1<<28),
+                (9, 13): (BASE_ADDR_GPIO[0], 1<<31),
+                (9, 14): (BASE_ADDR_GPIO[1], 1<<18),
+                (9, 15): (BASE_ADDR_GPIO[1], 1<<16),
+                (9, 16): (BASE_ADDR_GPIO[1], 1<<19)}
 
 
 # Now the class that controls our servos...
@@ -182,7 +199,8 @@ class ServoController:
 if __name__=='__main__':
     pruface = PruInterface('./servos.bin')
     sctl = ServoController(pruface, lServos, 20000) # 20ms
-    #sctl.setTimes([800]*18)
-    sctl.setAngles([0,0,0])
+    sctl.setAngles([None]*18)
+    def testLegI(i):
+        sctl.setAngles([None]*3*i+[0,5,0]+[None]*3*(6-i-1))
 
 
