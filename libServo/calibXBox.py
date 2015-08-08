@@ -26,7 +26,6 @@ from evdev._input import ioctl_capabilities # Sole parameter: InputDevice.fd
 
 
 
-dev = InputDevice('/dev/input/event1') # Hard-coded, don't care, calibration, small tool, fun with controller
 
 
 def getAxesValues(dev):
@@ -178,6 +177,7 @@ def xpadMenu(dev):
 
 
 if __name__=='__main__':
+    dev = InputDevice('/dev/input/event1') # Hard-coded, don't care, calibration, small tool, fun with controller
     pruface = PruInterface('./servos.bin')
     sctl = ServoController(pruface, lServos, 20000)
     sctl.setAngles([None]*18)

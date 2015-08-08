@@ -12,6 +12,10 @@ from servos import PruInterface, ServoController
 from config import lServos
 from ik import ikLegPlane
 from math import sqrt
+from evdev import InputDevice, ecodes
+from evdev._input import ioctl_capabilities
+import time
+from calibXBox import getAxesValues
 
 
 
@@ -71,15 +75,21 @@ class Hexapod:
 
 if __name__=='__main__':
     pruface = PruInterface('./servos.bin')
-    sctl = ServoController(pruface, lServos, 10000) # Supposed to be 20ms, but can be less
-    legRL = Leg(lServos[:], (0,1,2))
-    beast = Hexapod([legRL])
+    sctl = ServoController(pruface, lServos, 20000) # Supposed to be 20ms, but can be less
+    lLegs = [Leg(lServos[3*i:3*i+3], (3*i+0,3*i+1,3*i+2)) for i in range(6)]
+    beast = Hexapod(lLegs)
     def demoCircle(N=400):
-        import time
         from math import cos, sin, pi
         for i in range(N):
             sctl.setAngles(beast.buildAngles([(0,145+45*cos(i*2*pi/N),45*sin(i*2*pi/N))]))
             time.sleep(.02)
+    dev = InputDevice('/dev/input/event1') # Hard-coded, don't care, ...
+    def demoXPad(dev):
+        while not ecodes.BTN_A in dev.active_keys():
+            dAbsInput = getAxesValues(dev)
+            sctl.setAngles(beast.buildAngles([(0,100,10+140*max( (0,-dAbsInput[ecodes.ABS_Y]/32768) ))]*6))
+            time.sleep(.01)
+        sctl.setAngles([None]*18)
 
 
 
