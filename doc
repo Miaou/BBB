@@ -29,12 +29,16 @@ Désactiver le reverse-DNS-lookup qui peut prendre des plombes, ouvrir /etc/ssh/
 UseDNS no
 ---> C'est pas UseDNS No <--- Sinon, on pourra plus se connecter en SSH et il faut mettre une Ubuntu sur mircoSD (http://elinux.org/Beagleboard:Ubuntu_On_BeagleBone_Black (sans faire l'étape "Main Process")) ou trouver un cable microHDMI
 
+Install pip pour Python3 : apt-get install python3-pip
+Y accéder : pip-3.2 et non pip qui renvoie à pip-2.7
+
 Pour le Joystick,
 https://wiki.archlinux.org/index.php/joystick, mais on n'a pas xpad de déjà installé
 http://www.omgubuntu.co.uk/2013/07/dealing-with-xbox-controllers-in-ubuntu
 Pour l'utiliser
-- solution pygame
+- solution pygame : non car pas moyen d'installer facilement pygame via pip-3.2 install (install "ok", mais import pygame plante)
 - solution sans pygame : http://www.raspberrypi.org/forums/viewtopic.php?t=19969&p=491414
+  - donc utiliser xboxdrv (see below) et evdev (pip-3.2 install evdev)
 
 Ceci dit, pour l'instant, y'a pas d'énergie sur le port usb...
 C'est un problème seulement si rien n'est branché au démarrage du BBB...
@@ -45,8 +49,6 @@ Donc pour la faire marcher, j'ai :
 - branché le BBB sur alim 5V 10A par jack
 - attendu pour ssh
 - xboxdrv --silent &
-
-Install pip pour Python3 : apt-get install python3-pip
 
 Problème des mises à jours : cf https://www.mail-archive.com/beagleboard@googlegroups.com/msg15617.html
 Et ça semble régler le problème.
