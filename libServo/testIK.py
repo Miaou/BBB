@@ -87,7 +87,7 @@ def plotAccessibleRange(N=20, fSleep=.1, bNoFill=False):
         screen.fill( (200, 200, 200) )
         pygame.display.flip()
     for a,b in [(i,0) for i in range(N+1)]+[(N,i) for i in range(N+1)]+[(N-i,N) for i in range(N+1)]+[(0,N-i) for i in range(N+1)]:
-        plotLegs(-90+a*180/N, 19+b*180/N, bLeg=False)
+        plotLegs(servoFemur.fShift+a*180/N, servoTibia.fShift+b*180/N, bLeg=False)
         pygame.display.flip()
         time.sleep(fSleep)
 
@@ -97,7 +97,7 @@ def plotRandom(N=10000, bNoFill=True):
         pygame.display.flip()
     t0 = time.time()
     while N>0:
-        plotLegs(-90+random.random()*180, 19+random.random()*180, (240,120,0), False)
+        plotLegs(servoFemur.fShift+random.random()*180, servoTibia.fShift+random.random()*180, (240,120,0), False)
         if time.time()-t0 > .02: # 50Hz
             t0 += .02
             pygame.display.flip()
