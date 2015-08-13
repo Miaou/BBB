@@ -6,8 +6,8 @@ But : générer des signaux PWM-like de période 20ms (50Hz), de taux de charge 
 Solutions envisagées :
 - PWM hardware, mais il n'y a pas assez de ports
 - PWM software, mais contrôlé par une appli sous Linux, on risque d'avoir une précision médiocre
-- PWM soft en mode noyau, mais je ne sais pas faire ! Serait probablement la solution la plus propre... Injecter un driver via modprobe qui puisse avoir un timing très précis
-- PRU, car le PRU c'est le temps réel, donc bonne précision.
+- PWM soft en mode noyau, mais je ne sais pas faire ! Serait probablement la solution la plus propre... Injecter un driver via modprobe qui puisse avoir un timing très précis.
+- PRU, car le PRU c'est le "temps réel", bonne précision, 5ns/instruction.
 
 Le PRU (cf. ./DOC_PRU) peut permettre un accès direct aux GPIOs
 - sauf que soit GPO soit GPI
@@ -39,13 +39,37 @@ Dans la suite, j'appellerai solution A celle qui utilise les GPIO en mode standa
 Il serait intéressant de faire la solution B, mais je pense que la synchro des 2 PRU doit être pénible.
 
 Les deux solutions ne seront pas headers-compatible.
-Solution A positionnera les fils de signaux sur les headers P8_29 à P8_46 (pas moyen de les mettre verticaux car il y a la plage des pins pour la mémoire eMMC interne qu'on utilise, cf le bas de http://beagleboard.org/support/bone101).
+Solution A positionnera les fils de signaux sur le bas du header P8 (pas moyen de les mettre verticaux car il y a la plage des pins pour la mémoire eMMC interne qu'on utilise, cf le bas de http://beagleboard.org/support/bone101).
 Solution B positionnera les fils où elle peut, probablement sur les deux headers.
 
 
 
 Solution A :
+- utilisation des PINS :
+  - dans l'idée P8_29 à P8_46, sur les fils HDMI/LCD, ce qui pousse à faire la configuration du pinmuxing de ces pins
+  - MAIS, blague, il se trouve en pratique que ces fils sont aussi les fils de boot du processeur
+    - cf. le manuel, Section x.y "Pin Usage Consideration"
+    - les tensions dans les fils de signaux des servos suffisent à faire booter le proco n'importe comment
+    - donc utiliser les positions P8_29 à P8_46 marche, sauf qu'il faut pas rebooter...
+    - donc j'utilise les pins suivants :
+      - impairs sont les pattes de droites, pairs celles de gauches (parce que ma BBB est à l'envers sur l'hexapod)
+      - pour chaque triplet du haut vers bas : hip femur tibia (donc 11->hip, 13->femur, 15->tibia)
+                    P9                                  P8
+                  1 .. 2                              1 .. 2 
+                  3 .. 4                              3 .. 4 
+                  5 .. 6                              5 .. 6 
+                  7 .. 8                              7 XX 8 
+                  9 .. 10               front right   9 XX 10  front left
+                 11 XX 12                            11 XX 12
+   middle right  13 XX 14  middle left               13 XX 14
+                 15 XX 16                rear right  15 XX 16  rear left
+                 17 .. 18                            17 XX 18
+                 19 .. 20                            19 .. 20
+                 21 .. 22                            21 .. 22
+                   [..]                                [..] 
+                 45 .. 46                            45 .. 46
 - configuration du pinmuxing pour dire à la BBB de rendre ces pins accessibles via GPIO
+  - (obsolète pour le HDMI, mais il faut quand même faire un device tree object pour activer le PRU)
   - unload le device tree HDMI pour libérer les GPIO
     - ouvrir la partition bootable (depuis le Windows sur lequel il est branché en USB, sinon ...)
     - modifier le fichier uEnv.txt, décommenter la partie Disable HDMI
@@ -54,6 +78,10 @@ Solution A :
     - devrait se faire tout seul vu que l'HDMI est désactivé
     - vérifier que c'est bon : utiliser http://www.valvers.com/embedded-linux/beaglebone-black/step04-gpio/
   - il faut quand même refaire un device tree pour activer le PRU (cf DOC_PRU)
+  - blague : il faut aussi activer le module 2 des GPIOs 
+    - (il y a 4 modules GPIO séparés (32 pins par modules))
+    - (en général, le module est déjà activé (parce que les pins sont utilisés ailleurs))
+    - (mais pas le module GPIO2 : lol)
 - faisage du soft pour pouvoir personnaliser l'ordre des PIN à l'exécution
 - format dans la mémoire du PRU
   - à partir de 0x010100 (SHARED+ 0x0100)
@@ -67,9 +95,9 @@ Solution A :
   - maintenant il y a aussi la partie où le programme controlant la lib va écrire.
 
 
------------------
-!!! RESULTATS !!!
------------------
+---------------------------------------
+!!! RESULTATS libServo (Solution A) !!!
+---------------------------------------
 Après avoir passés tous les problèmes techniques, et les affreux bugs... ça marche !
 Test avec les 18 commandes :
 - résolution constatée à l'oscillo : ~1.2µs
@@ -83,3 +111,47 @@ Test avec les 18 commandes :
 - coût CPU du prg qui contrôle la lib :
   - l'interface Python (pour l'instant bas-niveau) prend ~9% CPU pour un flux "continu" de commandes
 - stabilité : 24h de contrôle continue ok
+
+
+
+
+Contrôle plus haut niveau :
+- inverse kinematics pour prédire l'angle à appliquer afin d'obtenir la position du bout de la patte voulue
+  - en considérant juste le fémur et le tibia dans le plan qu'ils définissent (cf. ikLegPlane)
+  - en 3D par rapport à un centre imaginaire de l'hexapod
+- regroupement des servos par jambe
+  - étalonnage des servos (cf. config.py) : définir leur position 0°, 180° (ils sont vraiment tous différents)
+- construction d'une classe hexapod, support des jambes, exécuteur des trajectoires
+- construction du mouvement de l'hexapod
+
+Notion de trajectoire :
+- les servos sont controllés en position angulaire
+- on souhaite controler à peu près les positions intermédiaires des jambes
+- ce qui demande une notion de trajectoire, abcisse curviligne, ...
+  - (biblio Geo3D ???)
+  - trajectoires -> segments [A(xa,ya,za,ta) B(xb,yb,zb,tb)], interpolation linéaire : xc = (xb-xa)/(tb-ta)*(tc-ta)+xa
+  - ik à la volée, alpha,beta,gamma
+  - vérifier que tous les points de la trajectoire sont accessibles, que la vitesse des moteurs n'est pas trop forte
+    - éviter que l'ik plante
+    - résolution ~15ms
+  - possibilité de rester mou entre deux trajectoires ?
+- suivi de la trajectoire
+  - feed un Thread, qui exécute les trajectoires, résolution ~15ms
+  - ajout d'une trajectoire si nouveau pt de départ est trop loin ? Non, géré par l'hexapod, car les pattes doivent rester synchro
+
+Traj: lPts = [(t0=0,xa,ya,za),(t1,xb,yb,zb),(t2,xc,yc,zc),...] waypoints
+
+
+Mouvements de l'hexapod
+- 6 DOF: avance/recul, latéral gche/dte, hauteur sol, bascule avant/arrière, bascule côtés, rotation sur lui même
+  - sachant que le tangage et le roulis ne seront pas précis (distance du point de contact des pattes au centre du robot) ni très utile...
+- combiner :
+  - 3 jambes à terre, qui vont à l'inverse du mouvement de l'hexa
+  - 3 jambes en l'air, qui vont dans le même sens que l'hexa
+  - au moment où les jambes s'inversent, elles ont le même avancement (neutre)
+  - donc combiner :
+    - le mouvement souhaité de l'hexa
+      - combinaison linéaire des 3D "infinis" avance, latéral (strafe), lacet (yaw)
+      - combinaison linéaire des 3D "limités" tangage (pitch), roulis (roll), hauteur
+    - le cycle de marche
+
