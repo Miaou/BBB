@@ -14,7 +14,7 @@ DEG = lambda ang:180*ang/pi
 
 
 
-def ikLegPlane(x,y, servoFemur,servoTibia, lFemur=76.2,lTibia=114.3):
+def ikLegPlane(x,y, servoFemur,servoTibia, lFemur=76.2,lTibia=107.95):
     '''
     IK for the leg, considering the plane in which the femur and tibia are.
     Returns a list of possible angles of the femur and tibia (0 or 1, maybe 2).
