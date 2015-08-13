@@ -2,7 +2,7 @@
 # Test the Inverse Kinematics, there's sthg wrong with offsets, and angle diretion...
 
 
-WIDTH, HEIGHT = 600, 600
+WIDTH, HEIGHT = 1000, 1000
 
 
 
@@ -28,7 +28,7 @@ def quickKI(x,y): # IK, not KI
     '''x,y in mm'''
     lsqu = x**2+y**2
     l1 = 76.2
-    l2 = 114.3
+    l2 = 107.95 #114.3
     beta = acos( (lsqu-l1*l1-l2*l2)/(2*l1*l2) )# - pi
     # Gamma is given in [-pi/2;3pi/2]
     gamma = (x == 0 and (y>0 and pi/2 or -pi/2)) or atan(y/x) + (x<0 and pi)
@@ -44,12 +44,15 @@ def quickKI(x,y): # IK, not KI
 
 
 pygame.quit()
+from os import environ
+environ['SDL_VIDEO_WINDOW_POS'] = '{},{}'.format(10,25)
 pygame.init()
 screen = pygame.display.set_mode( (WIDTH,HEIGHT) )
 
+
 def plotLegs(a,b, colMark=(240,0,0), bLeg=True):
     u,v = 76.2*cos(a*pi/180),76.2*sin(a*pi/180)
-    x,y = u+114.3*cos((a-b)*pi/180),v+114.3*sin((a-b)*pi/180)
+    x,y = u+107.95*cos((a-b)*pi/180),v+107.95*sin((a-b)*pi/180)
     if bLeg:
         pygame.draw.aaline(screen, (0,0,0), zoom(0,0), zoom(u,v))
         pygame.draw.aaline(screen, (0,0,0), zoom(u,v), zoom(x,y))
@@ -110,8 +113,8 @@ def plotRandomIK(N=10000, bNoFill=False):
     t0 = time.time()
     lCols = [(0,0,0), (0,220,0), (0,0,250)]
     while N>0:
-        # Domain should be in a circle centered in 0 and of radius 114.3+76.2=190.5
-        x,y = -190.5+381*random.random(), -190.5+381*random.random()
+        # Domain should be in a disk centered in 0 and of radius 114.3+76.2=190.5 107.95+76.2=184.15
+        x,y = -184.15+368.3*random.random(), -184.15+368.3*random.random()
         plotMark(x,y, lCols[len(ikLegPlane(x,y, servoFemur,servoTibia))])
         if time.time()-t0 > .02: # 50Hz
             t0 += .02
@@ -120,9 +123,10 @@ def plotRandomIK(N=10000, bNoFill=False):
 
 servoFemur = lServos[1]
 servoTibia = lServos[2]
-#plotAccessibleRange(N=200, fSleep=.001)
-plotRandomIK(100000)
-plotRandom(3000)
-plotAccessibleRange(200, .0, True)
+if __name__=='__main__':
+    #plotAccessibleRange(N=200, fSleep=.001)
+    plotRandomIK(100000)
+    plotRandom(3000)
+    plotAccessibleRange(200, .0, True)
 
 
