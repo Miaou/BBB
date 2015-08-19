@@ -184,12 +184,10 @@ class ServoController:
         assert len(lAngles)==len(self.lCfgServos), "More (or less) commands than known pins, aborting"
         
         #(t1-t0)/(a1-a0)*(a-a0)+t0
-        lTimes = []
+        lTimes = [0]*len(lAngles)
         for i,ang in enumerate(lAngles):
-            if ang == None:
-                lTimes.append(0)
-            else:
-                lTimes.append(self.lCfgServos[i].getTime(ang))
+            if ang != None:
+                lTimes[i] = self.lCfgServos[i].getTime(ang)
         self.setTimes(lTimes)
 
 

@@ -110,6 +110,8 @@ Test avec les 18 commandes :
 - RAPPEL : coût CPU de la lib : 0%
 - coût CPU du prg qui contrôle la lib :
   - l'interface Python (pour l'instant bas-niveau) prend ~9% CPU pour un flux "continu" de commandes
+  - (15ms de pause avec 1.5ms de CPU pour setTimes())
+  - (setAngles peut-être plus long et nécessiter 3ms)
 - stabilité : 24h de contrôle continue ok
 
 
