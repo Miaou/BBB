@@ -49,9 +49,54 @@ def ikLegPlane(x,y, servoFemur,servoTibia, lFemur=76.2,lTibia=107.95):
     return lIK
 
 
+def ikLeg(x,y,z, servoHip,servoFemur,servoTibia, xA=34,yA=7, lFemur=76.2,lTibia=107.95):
+    '''
+    IK for the whole leg.
+    Returns a list of possible angles for the 3 joints (hip, femur, tibia).
+    Dimensions are in mm, angles in degrees.
+    x always points outward the pod, y always points to the front of the pod, z is upward.
+    Origin is at the hip joint. Seen from above:
+                 |
+        hipJoint X   femur     tibia
+       rotCenter X----------X----------X
+    ^            |
+    |y    POD    |
+    |    BODY    |
+     -->
+      x
+    '''
+    l1squ = xA**2+yA**2
+    xysqu = x**2+y**2
+    # Gamma is given in [-pi/2;3pi/2]
+    gamma = DEG(  (x == 0 and (y>0 and pi/2 or -pi/2)) or atan(y/x) + (x<0 and pi)  )
+    cosdelta = cos( pi-atan(yA/xA) )
+    Delta = 4*(l1squ*(cosdelta**2-1)+xysqu)
+    if Delta < 0:
+        return []
+    elif Delta == 0: # Improbable
+        lL = (sqrt(l1squ)*cosdelta,)
+    else:
+        lL = (sqrt(l1squ)*cosdelta + sqrt(Delta)/2, sqrt(l1squ)*cosdelta - sqrt(Delta)/2)
+    lIK = []
+    for l in lL:
+        try:
+            beta = DEG( acos( (l**2+xysqu-l1squ)/(2*l*sqrt(xysqu)) ) )
+        except ValueError:
+            print('x', end='')
+            continue
+        aHip = servoHip.findAngleInDomain(gamma-beta)
+        if not aHip:
+            continue
+        for a,b in ikLegPlane(l,z, servoFemur,servoTibia, lFemur,lTibia):
+            lIK.append( (aHip,a,b) )
+    return lIK
+            
+    
+
+
 if __name__=='__main__':
     from config import lServos
-    servoFemur,servoTibia = lServos[1:3]
+    servoHip,servoFemur,servoTibia = lServos[0:3]
 
 
 
