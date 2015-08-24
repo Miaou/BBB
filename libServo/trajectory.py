@@ -1,16 +1,18 @@
 #
 # Calculation of the trajectories of the legs, for a given mouvement
+# + calculation of r (offline)
 
 
 from math import cos, sin, acos, atan, pi
+from findSR import lZSRH
 
 
 
 # TODO: expand to take as argument a function which generates lSxy and r from z
 class HexaTrajectory:
-    def __init__(self, lSxy, r, deltaU):
-        self.updateParams(lSxy, r, deltaU)
-    def updateParams(self, lSxy, r, deltaU):
+    def __init__(self, z,deltaU, **kwargs):
+        self.updateParams(z,deltaU, **kwargs)
+    def updateParams(self, z,deltaU, xA=34,yA=7):
         '''
         Updates the sweet spots, r, and deltaU, for instance when the height of the pod changes
         lSxy is the list of all leg's sweet spot (Sx,Sy), "center" of the trajectory
@@ -19,9 +21,15 @@ class HexaTrajectory:
          and deltaTheta is computed so that a leg step foot exactly 2*deltaU
          (speed will be reduced if it is not possible)
         '''
-        self.lSxy = lSxy[:]
+        z,S,r,h = lZSRH[[z1 for z1,S,r,h in lZSRH].index(z)] # For now, only use predefined z
+        lSxy = []
+        for i, (Sx, Sy) in enumerate(lSxyBase): # GLOBAL
+            t,d = lSxyAnglesDir[i]
+            lSxy.append( (Sx+d*(xA+S)*cos(t)-yA*sin(t), Sy+yA*cos(t)+d*(xA+S)*sin(t)) )
+        self.lSxy = lSxy
         self.r = r
         self.deltaU = deltaU
+        self.h = h
     def _computeDeltaTheta(self, Vx, Vy, Omega):
         '''
         Vx and Vy are planar velocities of the object, in mm/s
@@ -71,10 +79,15 @@ class HexaTrajectory:
         return (self._trajLeg(Vx, Vy, Omega, u, Sx, Sy, deltaTheta) for Sx, Sy in self.lSxy)
 
 
-
-lSxy = ((+42.75, -82.5), (-42.75, -82.5),
-        (+63,0),         (-63,0),
-        (+42.75, +82.5), (-42.75, +82.5))
+# For now, these are only the positions of the hip
+lSxyBase = ((+42.75, -82.5), (-42.75, -82.5),
+            (+63,0),         (-63,0),
+            (+42.75, +82.5), (-42.75, +82.5))
+# These are the shift angles of the support of the hip,
+#  and the x direction.
+lSxyAnglesDir = ((-pi/3,1), (pi/3,-1),
+                 (0,1), (0,-1),
+                 (pi/3,1), (-pi/3,-1)) 
 
 if __name__=='__main__':
     print('Importing pylab...', end='')
@@ -82,13 +95,15 @@ if __name__=='__main__':
     print(' Ok')
     
     def plotTraj(Vx,Vy,Omega,sCol='b'):
-        trajector = HexaTrajectory(lSxy, 30, 1)
+        trajector = HexaTrajectory(-69, 1)
         for i,lXY in enumerate( zip(*(trajector.getXYOfLegs(Vx,Vy,Omega,u) for u in pylab.r_[-1:1:11j])) ): # This is unreadable, yes.
             lX,lY = zip(*lXY)
-            Sx,Sy = lSxy[i]
+            Hx, Hy = lSxyBase[i]
+            Sx, Sy = trajector.lSxy[i]
             pylab.plot((Sx+lX[0],),(Sy+lY[0],),sCol+'x')
             pylab.plot([Sx+x for x in lX],[Sy+y for y in lY],sCol+'-')
             pylab.plot((Sx,),(Sy,),'kx')
+            pylab.plot((Hx,),(Hy,),'rx')
         pylab.plot((0,),(0,),'kx')
         pylab.axis('equal')
         #pylab.show()
