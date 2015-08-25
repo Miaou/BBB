@@ -12,7 +12,7 @@ lZSRH = ((-69., 85.55, 85., 76.),  # Nominal
          (-30, 111.72, 69.5, 59.)) # Ultra-low profile. Does the hexa touch the ground?
 
 
-print('Note: findSRH does not take into account the hip joint')
+# Note: findSRH does not take into account the hip joint
 def findSRH(z):
     '''
     S will be the distance to the sweet spot, in mm,
