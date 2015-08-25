@@ -12,11 +12,10 @@ from servos import PruInterface, ServoController
 from config import lServos
 from ik import ikLegPlane
 from math import sqrt
-from evdev import InputDevice, ecodes
-from evdev._input import ioctl_capabilities
 import time
-from calibXBox import getAxesValues
-
+from joy import InputDevice, ecodes, getAxesValues
+#from evdev._input import ioctl_capabilities
+from trajectory import WalkTrajectory
 
 
 # A leg is not much more than a container...
@@ -87,9 +86,29 @@ if __name__=='__main__':
     def demoXPad(dev):
         while not ecodes.BTN_A in dev.active_keys():
             dAbsInput = getAxesValues(dev)
-            sctl.setAngles(beast.buildAngles([(0,100,10+140*max( (0,-dAbsInput[ecodes.ABS_Y]/32768) ))]*6))
+            if dAbsInput[ecodes.ABS_GAS] > 200:
+                sctl.setAngles(beast.buildAngles([(0,100,10+140*max( (0,-dAbsInput[ecodes.ABS_Y]/32768) ))]*6))
+            else:
+                sctl.setAngles([None]*18)
             time.sleep(.01)
         sctl.setAngles([None]*18)
+    def demoWalk(dev):
+        t0 = time.time()
+        u = 0.
+        traj = WalkTrajectory(-69,2)
+        while not ecodes.BTN_A in dev.active_keys():
+            dAbsInput = getAxesValues(dev)
+            t1 = time.time()
+            u += 4*(t1-t0)*dAbsInput[ecodes.ABS_GAS]/255
+            t0 = t1
+            sctl.setAngles(traj.getAngles(lServos,
+                                          dAbsInput[ecodes.ABS_X]/1000,
+                                          dAbsInput[ecodes.ABS_Y]/1000,
+                                          dAbsInput[ecodes.ABS_RX]/100000,
+                                          u))
+            time.sleep(.01)
+        sctl.setAngles([None]*18)
+    demoWalk(dev)
 
 
 
