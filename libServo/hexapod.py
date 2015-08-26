@@ -99,16 +99,26 @@ if __name__=='__main__':
         while not ecodes.BTN_A in dev.active_keys():
             dAbsInput = getAxesValues(dev)
             t1 = time.time()
-            u += 4*(t1-t0)*dAbsInput[ecodes.ABS_GAS]/255
-            t0 = t1
+            u += 4*(t1-t0)*(dAbsInput[ecodes.ABS_GAS]-dAbsInput[ecodes.ABS_BRAKE])/255
             sctl.setAngles(traj.getAngles(lServos,
-                                          dAbsInput[ecodes.ABS_X]/1000,
-                                          dAbsInput[ecodes.ABS_Y]/1000,
-                                          dAbsInput[ecodes.ABS_RX]/100000,
+                                          +dAbsInput[ecodes.ABS_X]/1000,
+                                          -dAbsInput[ecodes.ABS_Y]/1000,
+                                          -dAbsInput[ecodes.ABS_RX]/100000,
                                           u))
+            t0 = t1
+            #time.sleep(.01)
+        while u%4 != 0:
+            t1 = time.time()
+            if t1-t0<4-(u%4): u += t1-t0
+            else:             u = 0
+            t0 = t1
+            sctl.setAngles(traj.getAngles(lServos,0,0,0,u))
+            time.sleep(.02)
+        for i in range(10):
+            sctl.setAngles([None]*18) # I must do something when it does not write because it's busy
             time.sleep(.01)
-        sctl.setAngles([None]*18)
-    demoWalk(dev)
+    import cProfile
+    cProfile.run('demoWalk(dev)')
 
 
 
