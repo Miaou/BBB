@@ -40,11 +40,11 @@ def ikLegPlane(x,y, servoFemur,servoTibia, lFemur=76.2,lTibia=107.95):
     #print(epsilon, beta, gamma)
     a = servoFemur.findAngleInDomain(epsilon+gamma)
     b = servoTibia.findAngleInDomain(beta)
-    if a and b:
+    if a != None and b != None:
         lIK.append( (a, b) )
     a = servoFemur.findAngleInDomain(-epsilon+gamma)
     b = servoTibia.findAngleInDomain(-beta)
-    if a and b:
+    if a != None and b != None:
         lIK.append( (a, b) )
     return lIK
 
@@ -85,7 +85,7 @@ def ikLeg(x,y,z, servoHip,servoFemur,servoTibia, xA=34,yA=7, lFemur=76.2,lTibia=
             print('x', end='')
             continue
         aHip = servoHip.findAngleInDomain(gamma-beta)
-        if not aHip:
+        if aHip == None:
             continue
         for a,b in ikLegPlane(l,z, servoFemur,servoTibia, lFemur,lTibia):
             lIK.append( (aHip,a,b) )
