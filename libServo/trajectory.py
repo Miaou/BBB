@@ -117,7 +117,11 @@ class WalkTrajectory:
         lAngles = []
         lXYZ = self.getXYZOfLegs(Vx, Vy, Omega, u)
         for i,(x,y,z) in enumerate(lXYZ):
-            lAngles.extend( ikLeg(x,y,z, lServos[3*i+0],lServos[3*i+1],lServos[3*i+2])[0] )
+            lSol = ikLeg(x,y,z, lServos[3*i+0],lServos[3*i+1],lServos[3*i+2])
+            if not lSol:
+                raise ValueError("Leg {}, can't get to {:.2f} {:.2f} {:.2f}, S r u h {:.2f} {:.2f} {:.2f}".format(i,x,y,z,self.S,self.r,u))
+            else:
+                lAngles.extend( lSol[0] )
         return lAngles
 
 

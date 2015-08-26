@@ -75,9 +75,13 @@ def plotSRH(z,S,r,h):
     pygame.draw.aaline(screen, (0,250,0), zoom(S,z), zoom(S,z+h))
 
 
-def findAndPlot(lZ, bNoFill=False):
+def findAndPlot(lZ, bNoFill=False, bNoGrid=False):
     if not bNoFill:
         screen.fill( (200, 200, 200) )
+    if not bNoGrid:
+        for x in range(-200,201,20):
+            pygame.draw.aaline(screen, (220,220,220) if x != 0 else (240,240,240), zoom(x,-300), zoom(x,300))
+            pygame.draw.aaline(screen, (220,220,220) if x != 0 else (240,240,240), zoom(-300,x), zoom(300,x))
     pygame.display.flip()
     t0 = time.time()
     for z in lZ:
@@ -116,16 +120,18 @@ if __name__=='__main__':
     import pylab
     print(' Ok')
     lZ = pylab.r_[200:-200:401j]
-    if False:
+    if True:
         try:
-            findAndPlot(lZ)
+            plotRandom(3000, False)
+            findAndPlot(lZ, True)
             plotRandom(3000)
+            pygame.image.save(screen, 'findSR-profile.png')
         except BaseException as e:
             pygame.quit()
             raise e
     else:
         pygame.quit()
-    plotRH(lZ)
+        plotRH(lZ)
 
 
 
