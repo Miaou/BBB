@@ -13,7 +13,7 @@ from config import lServos
 from ik import ikLegPlane
 from math import sqrt
 import time
-from joy import InputDevice, ecodes, getAxesValues
+from joy import InputDevice, ecodes, getNormValues
 #from evdev._input import ioctl_capabilities
 from trajectory import WalkTrajectory
 
@@ -95,15 +95,17 @@ if __name__=='__main__':
     def demoWalk(dev):
         t0 = time.time()
         u = 0.
+        deltaU = .5
         traj = WalkTrajectory(-69,2)
+        dDeadZones = {i:.25 for i in (ecodes.ABS_X, ecodes.ABS_Y, ecodes.ABS_RX)}
         while not ecodes.BTN_A in dev.active_keys():
-            dAbsInput = getAxesValues(dev)
+            dNormInput = getNormValues(dev,dDeadZones)
             t1 = time.time()
-            u += 4*(t1-t0)*(dAbsInput[ecodes.ABS_GAS]-dAbsInput[ecodes.ABS_BRAKE])/255
+            u += 2/deltaU*(t1-t0)*(dNormInput[ecodes.ABS_GAS]-dNormInput[ecodes.ABS_BRAKE])
             sctl.setAngles(traj.getAngles(lServos,
-                                          +dAbsInput[ecodes.ABS_X]/1000,
-                                          -dAbsInput[ecodes.ABS_Y]/1000,
-                                          -dAbsInput[ecodes.ABS_RX]/100000,
+                                          +dNormInput[ecodes.ABS_X]*40,
+                                          -dNormInput[ecodes.ABS_Y]*40,
+                                          -dNormInput[ecodes.ABS_RX]/5,
                                           u))
             t0 = t1
             #time.sleep(.01)

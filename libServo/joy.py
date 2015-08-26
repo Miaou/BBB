@@ -27,6 +27,11 @@ def getAxesValues(dev):
     # 3) Reform the list as a more usable dict
     return {iAxis:tAbsInfo[0] for iAxis,tAbsInfo in ioctl_capabilities(dev.fd)[ecodes.EV_ABS]} # In fact, we don't need InputDevice
 
+def getNormValues(dev, dDeadZones):
+    'dDeadZones = {ecodes.ABS_X:.25,...}'
+    dAbsInput = getAxesValues(dev)
+    fdz = lambda v,z: ((v<-z or v>z) and ( (v<-z and (v+z)) or (v>z and (v-z)) )) or 0
+    return {i:fdz(v/dAbsMax[i],dDeadZones[i] if i in dDeadZones else 0)/(1.-(dDeadZones[i] if i in dDeadZones else 0.)) for i,v in dAbsInput.items()}
 
 
 try:
@@ -34,6 +39,8 @@ try:
 except OSError as e:
     print('----> Did you run xboxdrv? <----')
     raise e
+
+dAbsMax = {i:absInfo.max for i,absInfo in dev.capabilities()[ecodes.EV_ABS]}
 
 
 if __name__=='__main__':
@@ -61,3 +68,9 @@ if __name__=='__main__':
             time.sleep(.1)
 
     curses.wrapper(displayJoy, dev)
+
+
+
+
+
+
