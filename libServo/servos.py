@@ -156,9 +156,11 @@ class ServoController:
         pMem = PruInterface.MASK_FETCH|PruInterface.P_HEADER
         while True: # I will stop using hideous while-trues when they do a do...while
             iCurStatus, = struct.unpack('<I', prussmem[pMem:pMem+4]) # This value acts as a semaphore...
-            if iCurStatus != ServoController.FETCH_NO_CHANGE and not bWait:
-                return # Skip
-            elif iCurStatus == ServoController.FETCH_NO_CHANGE and bWait:
+            if not bWait:
+                if iCurStatus != ServoController.FETCH_NO_CHANGE:
+                    return # Skip
+                break
+            elif iCurStatus == ServoController.FETCH_NO_CHANGE:
                 break # Has waited until condition's met
 
         # I create a buffer, then I write it to the PRU.
