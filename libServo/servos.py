@@ -143,26 +143,30 @@ class ServoController:
 
 
 
-    def setTimes(self, lTimes):
+    def setTimes(self, lTimes, bWait=False):
         '''
         Speaks to the PRU, and writes the times (given in µs, float or int, 0 for no command)
         lTimes must match in size the lCfgServos given to this instance of ServoController
+        Optionnally bWait for the PRU to be able to process the setTimes command.
         '''
         assert len(lTimes)==len(self.lCfgServos), "More (or less) commands than known pins, aborting"
         
-        # If a write setTimes occurs before PRU had time to fetch the last one, skip!
+        # If a write setTimes occurs before PRU had time to fetch the last one, skip or wait!
         prussmem = self.pruface.getMappedMem()
         pMem = PruInterface.MASK_FETCH|PruInterface.P_HEADER
-        iCurStatus, = struct.unpack('<I', prussmem[pMem:pMem+4]) # This value acts as a semaphore...
-        if iCurStatus != ServoController.FETCH_NO_CHANGE:
-            return
+        while True: # I will stop using hideous while-trues when they do a do...while
+            iCurStatus, = struct.unpack('<I', prussmem[pMem:pMem+4]) # This value acts as a semaphore...
+            if iCurStatus != ServoController.FETCH_NO_CHANGE and not bWait:
+                return # Skip
+            elif iCurStatus == ServoController.FETCH_NO_CHANGE and bWait:
+                break # Has waited until condition's met
 
         # I create a buffer, then I write it to the PRU.
         # Begins with the header, and then n*servo
         buf = bytearray(struct.pack('<III', ServoController.FETCH_NO_CHANGE, # Writes no change as we must write the whole buffer before telling to take it into account
                                             len(lTimes), self.iPeriod))
         for i,t in enumerate(lTimes):
-            assert t>=0 and t*200 < self.iPeriod, 'Invalid specified time: nefative or longer than period...'
+            assert t>=0 and t*200 < self.iPeriod, 'Invalid specified time: negative or longer than period...'
             base,mask = PORT_TO_MASK[self.lCfgServos[i].getPort()]
             buf += struct.pack('<III', base, mask, int(t*200))
         
@@ -175,11 +179,12 @@ class ServoController:
     
 
     # TODO: add a way to disable the control of a given servo...
-    def setAngles(self, lAngles):
+    def setAngles(self, lAngles, bWait=False):
         '''
         Calculates times command corresponding to the given angles for each servo
         lAngles must match in size the lCfgServos given to this instance of ServoController
         Angles are in what-you-unit-you-want, but be consistent
+        Optionnally bWait for the PRU to be able to process the setAngles command.
         '''
         assert len(lAngles)==len(self.lCfgServos), "More (or less) commands than known pins, aborting"
         
@@ -188,7 +193,7 @@ class ServoController:
         for i,ang in enumerate(lAngles):
             if ang != None:
                 lTimes[i] = self.lCfgServos[i].getTime(ang)
-        self.setTimes(lTimes)
+        self.setTimes(lTimes, bWait)
 
 
 
