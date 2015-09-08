@@ -51,7 +51,7 @@ class WalkTrajectory:
                     lDT.append( acos((2*R**2-self.r**2)/(2*R**2)) )
                 except ValueError:
                     lDT.append( pi )
-            return min(min(( abs(Omega)*self.deltaU, deltaTheta )) for deltaTheta in lDT)*(-1 if Omega < 0 else 1)
+            return min(min(( abs(Omega)*self.deltaU, deltaTheta )) for deltaTheta in lDT)*(-1 if Omega < 0 else 1) # May be simplified to min( (min(lDT),abs(Omega)*self.deltaU) ) ???
         else:
             # This is not exactly deltaTheta, but at least it is comparable to rad
             return min( ((Vx**2+Vy**2)**.5*self.deltaU/self.r, 1) )
@@ -73,6 +73,27 @@ class WalkTrajectory:
         else:
             return (+self.r*u*deltaTheta*sin(Theta0), # Yes, using Taylor expansion of the above
                     -self.r*u*deltaTheta*cos(Theta0))
+    def _computeActualSpeedRatio(self, Vx, Vy, Omega):
+        '''
+        Helper function: computes the ratio between actual speed of the bot, and effective speed.
+        Computes deltaTheta for each legs, and keeps the min, compares to actual deltaTheta
+        (which is min over legs, but with a threshold)
+        '''
+        if Omega != 0:
+            lDT = []
+            for Sx,Sy in self.lSxy:
+                x = +Vy+Omega*Sx
+                y = -Vx+Omega*Sy
+                R = (x**2 + y**2)**.5/abs(Omega)
+                try:
+                    lDT.append( acos((2*R**2-self.r**2)/(2*R**2)) )
+                except ValueError:
+                    lDT.append( pi )
+            return min( (min(lDT), abs(Omega)*self.deltaU) ) / min(lDT) if min(lDT) != 0 else 1.
+        else:
+            phi = (Vx**2+Vy**2)**.5*self.deltaU/self.r
+            return min( (phi, 1) ) / phi if phi != 0 else 1.
+            
     def getXYOfLegs(self, Vx, Vy, Omega, u):
         '''
         Gets the points of the planar trajectory, centered on (0,0) when u=0
