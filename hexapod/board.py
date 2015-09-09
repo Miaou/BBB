@@ -18,6 +18,8 @@ from math import pi
 
 
 
+# May be a tunable setting in-app in the future
+HEIGHT = -69 # Available heights in findSR.py
 
 
 # Main controller, which should remember last position,
@@ -44,8 +46,6 @@ class UIMain:
     def isFinished(self):
         'Signals a quit'
         return self.bIsFinished
-    def getCurrentMode(self):
-        return self.iCurMode
     def setAngles(self, lAngles):
         global lServos
         self.nSetAngles += 1
@@ -62,19 +62,22 @@ class UIMain:
             self.nSetAngles = 0
         lBtns = self.dev.active_keys()
         dNormInput = getNormValues(dev, dDeadZones)
-        if ecodes.BTN_A in lBtns:
+        lFallingBtns = getFallingBtns(dev)
+        if ecodes.BTN_A in lFallingBtns:
             self.iCurMode += 1
             self.iCurMode %= len(self.lModes)
             # TODO: Handle transition, call the new mode
+            self.activateServos(False)
             self.lModes[self.iCurMode].onSizeChanged()
             self.lModes[self.iCurMode].resume()
         elif ecodes.BTN_START in lBtns:
             self.bIsFinished = True
         # if ecodes.BTN_B # No, as calibration and other modes may require different key mapping
         if self.wndHead.getch() == curses.KEY_RESIZE:
+            # TODO: pass stdscr to uiMain, as curses.COLS and .LINES are not updated without curses.update_lines_cols, which is only in Python 3.5
             self.onSizeChanged()
             self.lModes[self.iCurMode].onSizeChanged()
-        self.lModes[self.iCurMode].step(t, lBtns, dNormInput, getFallingBtns(dev))
+        self.lModes[self.iCurMode].step(t, lBtns, dNormInput, lFallingBtns)
     def activateServos(self, bActive):
         self.bServosOn = bActive
     def onSizeChanged(self):
@@ -97,7 +100,7 @@ class UIMain:
         self.wndHead.addstr(3,14,'{:5.1f} Hz ({:3.1f} ms)'.format(self.fLastFreq, 1000/self.fLastFreq if self.fLastFreq else float('inf')))
         self.wndHead.noutrefresh()
         self.lModes[self.iCurMode].refresh()
-        self.wndHead.move(1,0)
+        #self.wndHead.move(1,0)
         curses.doupdate()
         
         
@@ -124,21 +127,21 @@ class UIWalk(UIMode):
         self.Omega = 0.
         self.deltaU = .5
         self.u = 0.
-        self.traj = WalkTrajectory(-69,self.deltaU)
-        self.wndCmd = curses.newwin(5,20,4,0)
-        self.wndEff = curses.newwin(5,20,4,20)
+        self.traj = WalkTrajectory(HEIGHT,self.deltaU)
+        self.wndCmd = curses.newwin(5,22,4,0)
+        self.wndEff = curses.newwin(5,22,4,25)
         self.wndTiming = curses.newwin(3,15,9,0)
         self.wndParams = curses.newwin(5,15,12,0)
-        self.wndHelp = curses.newwin(8,curses.COLS,18,0)
+        self.wndHelp = curses.newwin(9,curses.COLS,18,0)
         self.onSizeChanged()
         self.t0 = time.time()
     def onSizeChanged(self):
         self.wndCmd.erase()
         self.wndCmd.move(0,0)
-        self.wndCmd.addstr('Command:\n     Vx: fff.f mm/s\n     Vy: fff.f mm/s\n      V: fff.f mm/s\n  Omega:  ff.f tr/s')
+        self.wndCmd.addstr('Command:\n     Vx: fff.f mm/s\n     Vy: fff.f mm/s\n      V: fff.f mm/s\n  Omega:  ff.f tr/min')
         self.wndEff.erase()
         self.wndEff.move(0,0)
-        self.wndEff.addstr('Effective:\n     Vx: fff.f mm/s\n     Vy: fff.f mm/s\n      V: fff.f mm/s\n  Omega:  ff.f tr/s')
+        self.wndEff.addstr('Effective:\n     Vx: fff.f mm/s\n     Vy: fff.f mm/s\n      V: fff.f mm/s\n  Omega:  ff.f tr/min')
         self.wndTiming.erase()
         self.wndTiming.move(0,0)
         self.wndTiming.addstr('Timing:\n  ΔU:  f.ff s\n   u:  f.ff')
@@ -154,7 +157,7 @@ class UIWalk(UIMode):
         self.wndHelp.addstr(' Left trigger axis: time backward\n')
         self.wndHelp.addstr(' Left stick: planar move\n')
         self.wndHelp.addstr(' Right stick: rotation\n')
-        self.wndHelp.addstr(' Start: quit') # May not change
+        self.wndHelp.addstr(' Start: quit\n') # May not change
     def resume(self):
         self.u = 0. # May be removed
         self.t0 = time.time()
@@ -172,7 +175,7 @@ class UIWalk(UIMode):
                                              self.u))
         self.t0 = t
         if ecodes.BTN_B in lFallingBtns:
-            self.uiMain.activateServos(not self.uiMain.bServosOn)
+            self.uiMain.activateServos(not self.uiMain.bServosOn) # Should use a getter
     def refresh(self):
         self.wndCmd.addstr(1,8,'{:6.1f}'.format(self.Vx))
         self.wndCmd.addstr(2,8,'{:6.1f}'.format(self.Vy))
@@ -185,7 +188,7 @@ class UIWalk(UIMode):
         self.wndEff.addstr(3,8,'{:6.1f}'.format((self.Vx**2+self.Vy**2)**.5*q), attr)
         self.wndEff.addstr(4,8,'{:6.1f}'.format(self.Omega*30/pi*q), attr)
         self.wndTiming.addstr(1,5,'{:6.2f}'.format(self.deltaU))
-        self.wndTiming.addstr(2,5,'{:6.2f}'.format(self.u))
+        self.wndTiming.addstr(2,5,'{:6.2f}'.format(self.u%4))
         self.wndParams.addstr(1,5,'{:6.2f}'.format(self.traj.z))
         self.wndParams.addstr(2,5,'{:6.2f}'.format(self.traj.S))
         self.wndParams.addstr(3,5,'{:6.2f}'.format(self.traj.r))
@@ -195,6 +198,7 @@ class UIWalk(UIMode):
         self.wndTiming.noutrefresh()
         self.wndParams.noutrefresh()
         self.wndHelp.noutrefresh()
+        self.wndHelp.move(8,0)
         
 
 

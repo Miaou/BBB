@@ -8,8 +8,9 @@ from ik import ikLegPlane
 
 lZSRH = ((-69., 85.55, 85., 76.),  # Nominal
          (-150, 53.52, 53., 132.), # Fun
-         (-41, 105.27, 73.5, 66.), # Low profile
-         (-30, 111.72, 69.5, 59.)) # Ultra-low profile. Does the hexa touch the ground?
+         (-41, 105.27, 73.5, 66.), # Low profile, chassis of the hexa also touches the ground.
+         (-30, 111.72, 69.5, 59.), # Ultra-low profile. Does the hexa touch the ground? No.
+         (-50,  94.34, 83., 25.))  # Low profile, not sure it works, sensitive to h
 
 
 # Note: findSRH does not take into account the hip joint
