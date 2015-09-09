@@ -89,7 +89,7 @@ class WalkTrajectory:
                     lDT.append( acos((2*R**2-self.r**2)/(2*R**2)) )
                 except ValueError:
                     lDT.append( pi )
-            return min( (min(lDT), abs(Omega)*self.deltaU) ) / min(lDT) if min(lDT) != 0 else 1.
+            return min( (min(lDT), abs(Omega)*self.deltaU) ) / (abs(Omega)*self.deltaU)
         else:
             phi = (Vx**2+Vy**2)**.5*self.deltaU/self.r
             return min( (phi, 1) ) / phi if phi != 0 else 1.

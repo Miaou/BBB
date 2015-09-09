@@ -10,10 +10,11 @@ sys.path.append(sys.path[0]+'/../libServo')
 from servos import PruInterface, ServoController
 from config import lServos
 from trajectory import WalkTrajectory
-from joy import dev, ecodes, getNormValues
+from joy import dev, ecodes, getNormValues, getFallingBtns
 import curses
 import time
 from multiprocessing import Value
+from math import pi
 
 
 
@@ -73,7 +74,7 @@ class UIMain:
         if self.wndHead.getch() == curses.KEY_RESIZE:
             self.onSizeChanged()
             self.lModes[self.iCurMode].onSizeChanged()
-        self.lModes[self.iCurMode].step(t, lBtns, dNormInput)
+        self.lModes[self.iCurMode].step(t, lBtns, dNormInput, getFallingBtns(dev))
     def activateServos(self, bActive):
         self.bServosOn = bActive
     def onSizeChanged(self):
@@ -93,9 +94,10 @@ class UIMain:
         self.wndHead.move(2,9)
         self.wndHead.clrtoeol()
         self.wndHead.addstr('ON' if self.bServosOn else 'OFF', curses.A_REVERSE|(curses.color_pair(1) if self.bServosOn else curses.color_pair(2)))
-        self.wndHead.addstr(3,14,'{:5.1f} Hz ({:3.1} ms)'.format(self.fLastFreq, 1000/self.fLastFreq if self.fLastFreq else float('inf')))
+        self.wndHead.addstr(3,14,'{:5.1f} Hz ({:3.1f} ms)'.format(self.fLastFreq, 1000/self.fLastFreq if self.fLastFreq else float('inf')))
         self.wndHead.noutrefresh()
         self.lModes[self.iCurMode].refresh()
+        self.wndHead.move(1,0)
         curses.doupdate()
         
         
@@ -108,7 +110,7 @@ class UIMode:
     def __init__(self, uiMain):
         self.uiMain = uiMain
     def resume(self): pass
-    def step(self, t, lBtns, dNormInput): pass
+    def step(self, t, lBtns, dNormInput, lFallingBtns): pass
     def onSizeChanged(self): pass
     def refresh(self): pass
 
@@ -123,10 +125,10 @@ class UIWalk(UIMode):
         self.deltaU = .5
         self.u = 0.
         self.traj = WalkTrajectory(-69,self.deltaU)
-        self.wndCmd = curses.newwin(5,20,5,0)
-        self.wndEff = curses.newwin(5,20,5,20)
-        self.wndTiming = curses.newwin(3,15,10,0)
-        self.wndParams = curses.newwin(5,15,13,0)
+        self.wndCmd = curses.newwin(5,20,4,0)
+        self.wndEff = curses.newwin(5,20,4,20)
+        self.wndTiming = curses.newwin(3,15,9,0)
+        self.wndParams = curses.newwin(5,15,12,0)
         self.wndHelp = curses.newwin(8,curses.COLS,18,0)
         self.onSizeChanged()
         self.t0 = time.time()
@@ -156,30 +158,32 @@ class UIWalk(UIMode):
     def resume(self):
         self.u = 0. # May be removed
         self.t0 = time.time()
-    def step(self, t, lBtns, dNormInput):
+    def step(self, t, lBtns, dNormInput, lFallingBtns):
         global lServos
         dt = t-self.t0
         self.u += 2/self.deltaU*dt*(dNormInput[ecodes.ABS_GAS]-dNormInput[ecodes.ABS_BRAKE])
-        self.Vx = +dNormInput[ecodes.ABS_X]*40
-        self.Vy = -dNormInput[ecodes.ABS_Y]*40
-        self.Omega = -dNormInput[ecodes.ABS_RX]/5
+        self.Vx = +dNormInput[ecodes.ABS_X]*80
+        self.Vy = -dNormInput[ecodes.ABS_Y]*80
+        self.Omega = -dNormInput[ecodes.ABS_RX]/2
         self.uiMain.setAngles(self.traj.getAngles(lServos,
                                              self.Vx,
                                              self.Vy,
                                              self.Omega,
                                              self.u))
         self.t0 = t
+        if ecodes.BTN_B in lFallingBtns:
+            self.uiMain.activateServos(not self.uiMain.bServosOn)
     def refresh(self):
         self.wndCmd.addstr(1,8,'{:6.1f}'.format(self.Vx))
         self.wndCmd.addstr(2,8,'{:6.1f}'.format(self.Vy))
         self.wndCmd.addstr(3,8,'{:6.1f}'.format((self.Vx**2+self.Vy**2)**.5))
-        self.wndCmd.addstr(4,8,'{:6.1f}'.format(self.Omega))
+        self.wndCmd.addstr(4,8,'{:6.1f}'.format(self.Omega*30/pi))
         q = self.traj._computeActualSpeedRatio(self.Vx, self.Vy, self.Omega)
         attr = curses.color_pair(1) if q < 1 else curses.color_pair(2)
         self.wndEff.addstr(1,8,'{:6.1f}'.format(self.Vx*q), attr)
         self.wndEff.addstr(2,8,'{:6.1f}'.format(self.Vy*q), attr)
-        self.wndEff.addstr(3,8,'{:6.1f}'.format((self.Vx**2+self.Vy**2)**.5)*1, attr)
-        self.wndEff.addstr(4,8,'{:6.1f}'.format(self.Omega*q), attr)
+        self.wndEff.addstr(3,8,'{:6.1f}'.format((self.Vx**2+self.Vy**2)**.5*q), attr)
+        self.wndEff.addstr(4,8,'{:6.1f}'.format(self.Omega*30/pi*q), attr)
         self.wndTiming.addstr(1,5,'{:6.2f}'.format(self.deltaU))
         self.wndTiming.addstr(2,5,'{:6.2f}'.format(self.u))
         self.wndParams.addstr(1,5,'{:6.2f}'.format(self.traj.z))
@@ -203,16 +207,15 @@ def mainLoop(stdscr):
 
     uiMain = UIMain(dev)
     t0 = time.time()
+    REFRESH_DELAY = .1
     while not uiMain.isFinished():
         t = time.time()
         uiMain.step(t)
-        if t-t0 > .25:
+        if t-t0 > REFRESH_DELAY:
             uiMain.refresh()
-            t0 += .25
-
-    print('Disable Servos, waiting a sec')
+            t0 += REFRESH_DELAY
+    # This should do a transition to a crawled position, before stopping...
     uiMain.sctl.setAngles([None]*len(lServos), True)
-    time.sleep(1) # Check that the bWait parameter works
     
 
 if __name__=='__main__':
