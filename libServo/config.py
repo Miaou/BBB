@@ -1,5 +1,8 @@
 #
 # Configuration of the servos: pin layout, calibration.
+# This is almost part of hexapod instead of libServo...
+
+# Sorry for the globals...
 
 
 

@@ -4,13 +4,20 @@
 # Hexapod Phoenix
 # (Trying a KI)
 
+# Old demos, may not run anymore.
 
+
+print('Old demos\n---> Run board.py instead <---')
+commentMeIfYouDare
+
+import sys
+sys.path.append(sys.path[0]+'/../libServo')
 from servos import PruInterface, ServoController, PORT_TO_MASK
 from math import atan, acos, sqrt, pi, cos, sin
 import time
 
 
-pruface = PruInterface('./servos.bin')
+pruface = PruInterface(sys.path[-1]+'/servos.bin')
 sctl = ServoController(pruface, [PORT_TO_MASK[8,29], PORT_TO_MASK[8,30]], 20000)
 sctl.setCalibration([((-90,2600),(90,550)),
                      ((-180,2550),(0,600))])

@@ -9,6 +9,8 @@ WIDTH, HEIGHT = 1000, 1000
 
 
 
+import sys
+sys.path.append(sys.path[0]+'/../libServo')
 import pygame
 import time
 from math import pi, cos, sin

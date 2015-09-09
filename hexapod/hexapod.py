@@ -4,10 +4,15 @@
 #  Uses ServoController to set the timings
 #  Uses IKs to calculate the angles of the joints
 
-# Traectories?
+# Obsolete. 
 
 
 
+print('Obsolete, nothing unique to see here\n---> Run board.py instead <---')
+commentMeIfYouDare
+
+import sys
+sys.path.append(sys.path[0]+'/../libServo')
 from servos import PruInterface, ServoController
 from config import lServos
 from ik import ikLegPlane
@@ -73,7 +78,7 @@ class Hexapod:
 
 
 if __name__=='__main__':
-    pruface = PruInterface('./servos.bin')
+    pruface = PruInterface(sys.path[-1]+'/servos.bin')
     sctl = ServoController(pruface, lServos, 20000) # Supposed to be 20ms, but can be less
     lLegs = [Leg(lServos[3*i:3*i+3], (3*i+0,3*i+1,3*i+2)) for i in range(6)]
     beast = Hexapod(lLegs)

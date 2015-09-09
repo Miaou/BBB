@@ -1,0 +1,18 @@
+libServo is a BeagleBone Black (BBB) library to control multiple servos using a single PRU.
+It was designed to generate signals for servos with the "highest but not too annoying" efficiency.
+Because servos have a (strange/weird) way of being controlled: a signal high between 700µs to 2500µs, then low, repeated every 20ms. A PWM with duty cycle between 3% and 12%...
+So we need a software PWM to handle the accuracy requirement (~8µs resolution).
+
+libServo has two parts:
+- a code running in the Programmable Realtime Unit (PRU) of the BBB (servos.p compiled to servos.bin)
+- a Python3 interface which eases the communication with the PRU.
+
+Hence, the BBB can handle the control of 18+ servos with 0% CPU usage...
+
+
+Note: current code makes the servos work at the same time, which may lead to a huge surge of current from the Power Supply Unit.
+
+Licensing:
+To Be Announced (so for now, all copyrights held), contact me.
+-- 
+PAB 3000

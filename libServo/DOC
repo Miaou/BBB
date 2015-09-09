@@ -18,7 +18,7 @@ Le PRU (cf. ./DOC_PRU) peut permettre un accès direct aux GPIOs
 
 Le PRU permet aussi d'accéder aux GPIOs en mode standard
 - peut accéder à tous les GPIOs physiquement accessibles
-- sauf que c'est bien plus lent
+- sauf que c'est bien plus "lent" (200ns au lieu de 5ns ?)
 
 
 Dimensionnement du code :
@@ -45,7 +45,7 @@ Solution B positionnera les fils où elle peut, probablement sur les deux header
 
 
 Solution A :
-- utilisation des PINS :
+- utilisation des PINS (cf. ../hexapod/DOC):
   - dans l'idée P8_29 à P8_46, sur les fils HDMI/LCD, ce qui pousse à faire la configuration du pinmuxing de ces pins
   - MAIS, blague, il se trouve en pratique que ces fils sont aussi les fils de boot du processeur
     - cf. le manuel, Section x.y "Pin Usage Consideration"
@@ -114,46 +114,4 @@ Test avec les 18 commandes :
   - (setAngles peut-être plus long et nécessiter 3ms)
 - stabilité : 24h de contrôle continue ok
 
-
-
-
-Contrôle plus haut niveau :
-- inverse kinematics pour prédire l'angle à appliquer afin d'obtenir la position du bout de la patte voulue
-  - en considérant juste le fémur et le tibia dans le plan qu'ils définissent (cf. ikLegPlane)
-  - en 3D par rapport à un centre imaginaire de l'hexapod
-- regroupement des servos par jambe
-  - étalonnage des servos (cf. config.py) : définir leur position 0°, 180° (ils sont vraiment tous différents)
-- construction d'une classe hexapod, support des jambes, exécuteur des trajectoires
-- construction du mouvement de l'hexapod
-
-Notion de trajectoire :
-- les servos sont controllés en position angulaire
-- on souhaite controler à peu près les positions intermédiaires des jambes
-- ce qui demande une notion de trajectoire, abcisse curviligne, ...
-  - (biblio Geo3D ???)
-  - trajectoires -> segments [A(xa,ya,za,ta) B(xb,yb,zb,tb)], interpolation linéaire : xc = (xb-xa)/(tb-ta)*(tc-ta)+xa
-  - ik à la volée, alpha,beta,gamma
-  - vérifier que tous les points de la trajectoire sont accessibles, que la vitesse des moteurs n'est pas trop forte
-    - éviter que l'ik plante
-    - résolution ~15ms
-  - possibilité de rester mou entre deux trajectoires ?
-- suivi de la trajectoire
-  - feed un Thread, qui exécute les trajectoires, résolution ~15ms
-  - ajout d'une trajectoire si nouveau pt de départ est trop loin ? Non, géré par l'hexapod, car les pattes doivent rester synchro
-
-Traj: lPts = [(t0=0,xa,ya,za),(t1,xb,yb,zb),(t2,xc,yc,zc),...] waypoints
-
-
-Mouvements de l'hexapod
-- 6 DOF: avance/recul, latéral gche/dte, hauteur sol, bascule avant/arrière, bascule côtés, rotation sur lui même
-  - sachant que le tangage et le roulis ne seront pas précis (distance du point de contact des pattes au centre du robot) ni très utile...
-- combiner :
-  - 3 jambes à terre, qui vont à l'inverse du mouvement de l'hexa
-  - 3 jambes en l'air, qui vont dans le même sens que l'hexa
-  - au moment où les jambes s'inversent, elles ont le même avancement (neutre)
-  - donc combiner :
-    - le mouvement souhaité de l'hexa
-      - combinaison linéaire des 3D "infinis" avance, latéral (strafe), lacet (yaw)
-      - combinaison linéaire des 3D "limités" tangage (pitch), roulis (roll), hauteur
-    - le cycle de marche
 

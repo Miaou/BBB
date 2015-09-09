@@ -1,5 +1,6 @@
 #!/usr/bin/python3
-#
+
+# My convenience functions for joy interfacing. Independant of the hexapod, in fact...
 
 
 from evdev import InputDevice, ecodes

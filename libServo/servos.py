@@ -14,12 +14,15 @@
 # For now, the lib does not store the commands, all the servos has to be set in oneshot
 
 
+# Sorry for the global lServos...
+
+
 
 import struct
 import pypruss
 import mmap
 from binascii import hexlify # Printing content of memory (debug)
-from config import lServos # Calibrated servos
+from config import lServos # Calibrated servos, so this is kind of already a part of hexapod
 
 
 

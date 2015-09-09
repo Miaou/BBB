@@ -1,5 +1,5 @@
 #!/usr/bin/python3
-# Parce que je debug...
+# Debugging the PRU by hand: accessing its memory through the mapped memory interface.
 
 import mmap
 from binascii import hexlify

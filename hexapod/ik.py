@@ -95,6 +95,8 @@ def ikLeg(x,y,z, servoHip,servoFemur,servoTibia, xA=34,yA=7, lFemur=76.2,lTibia=
 
 
 if __name__=='__main__':
+    import sys
+    sys.path.append(sys.path[0]+'/../libServo')
     from config import lServos
     servoHip,servoFemur,servoTibia = lServos[0:3]
 

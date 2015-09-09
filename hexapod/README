@@ -1,0 +1,42 @@
+----- SUPER HEXAPOD 3000 by Dr. PAB -----
+Making an hexapod (Phoenix Hexapod by Linxmotion) walk.
+The brain is changed to use a BeagleBone Black instead of the 2 arduinos (the BotBoarduino).
+The goal was to make a proof of concept of the highly calculation power and realtime capabilities of the BBB.
+
+And, because we are scientists, we prefer making from scratch something that already exists, just because it's a nice puzzle and the previous build was not working as expected.
+(and we did not had a PlayStation2 controller)
+(so I (PAB) built something that works with a XBox pad (because I have one) and maybe you (the reader) don't have that, so ...)
+SO, DISCLAIMER:
+"My work should work from the command line (or at least from the Python3 interpreter) and you should be able to make it work, with content taken from board.py"
+(or by emulating a joystick with evdev) (GL HF)
+
+
+Now, read DOC for further french doc.
+Run python3 board.py for the whole show.
+The architecture of the soft is as follows (written in Python3):
+- a user interface gets input and generates trajectories of the feet accordingly
+- the trajectory is used to compute 3D position of the feet, at each time
+- the inverse kinematic is used to compute the angles of the servomotors of the legs
+- the corresponding angles are written in the memory of the Programmable Realtime Unit (PRU) of the BBB
+- a specific program runs in the PRU, and generates the signals for the servos
+
+
+Useful files:
+- board.py: Textual User Interface (TUI) for the hexapod. More a status board.
+- ik.py: all the magic of the Inverse Kinematics happen here
+- trajectory.py: the walking trajectory is coded here. Kind of magic too. About intersecting circles and sweet spots.
+- findSR.py: off-line parameters calculation and on-line configuration of the trajectory. Strores the sweet spot and radius of available movement around the sweet spot (yes, very basic model)
+- joy: joystick interface. You could use another joystick instead of the xbox pad, and maybe emulate one from the keyboard!!
+- ../libServo/servos.py: Python interface to the PRU code (which is ../libServo/servos.bin compiled from servos.p), and libServo
+
+Other files:
+- testIK*.py: testing the IK, and the limits of the movements. 2D side views or top views. Usable from Linux/Windows with installed pygame. Very interesting drawings. Use pygame.quit() to close the window.
+- hexapod.py: obsolete
+- calibXBox.py: maybe obsolete, should be merged into hexapod
+- oneLeg.py: very obsolete, early proof of concept of the 2D ik + libServo
+
+
+Licensing:
+To Be Announced (so for now, all copyrights held), contact me.
+-- 
+PAB 3000

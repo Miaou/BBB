@@ -3,7 +3,11 @@
 # Calibration of the legs using the XBox Controller (see xboxdrv in the ../doc) and evdev
 # Small tool provided more than anything else "as-is", just for fun...
 
+# Should be merged into board.py, as another mode of operation...
 
+
+import sys
+sys.path.append(sys.path[0]+'/../libServo')
 from config import lServos
 from servos import PruInterface, ServoController
 import time
@@ -188,7 +192,7 @@ def xpadMenu(stdscr, dev):
 
 if __name__=='__main__':
     #dev = InputDevice('/dev/input/event1') # Hard-coded, don't care, calibration, small tool, fun with controller
-    pruface = PruInterface('./servos.bin')
+    pruface = PruInterface(sys.path[-1]+'/servos.bin')
     sctl = ServoController(pruface, lServos, 20000)
     sctl.setAngles([None]*18)
     xpadMenu(dev)
