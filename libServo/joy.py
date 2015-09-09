@@ -33,6 +33,14 @@ def getNormValues(dev, dDeadZones):
     fdz = lambda v,z: ((v<-z or v>z) and ( (v<-z and (v+z)) or (v>z and (v-z)) )) or 0
     return {i:fdz(v/dAbsMax[i],dDeadZones[i] if i in dDeadZones else 0)/(1.-(dDeadZones[i] if i in dDeadZones else 0.)) for i,v in dAbsInput.items()}
 
+def getFallingBtns(dev):
+    'Returns falling edges (buttons being pushed)'
+    try:
+        events = list(dev.read())
+    except IOError:
+        events = []
+    return [ev.code for ev in events if ev.type == ecodes.EV_KEY and ev.value == 1] # value is 0 for up, 1 for down, 2 for hold
+
 
 try:
     dev = InputDevice('/dev/input/event1') # Hardcoded, but, hey, it's only for the BBB
