@@ -28,6 +28,7 @@ Useful files:
 - findSR.py: off-line parameters calculation and on-line configuration of the trajectory. Strores the sweet spot and radius of available movement around the sweet spot (yes, very basic model)
 - joy: joystick interface. You could use another joystick instead of the xbox pad, and maybe emulate one from the keyboard!!
 - ../libServo/servos.py: Python interface to the PRU code (which is ../libServo/servos.bin compiled from servos.p), and libServo
+- ../libServo/README: to compile the libServo (both pypruss, and servos.bin), do a "make all" there.
 
 Other files:
 - testIK*.py: testing the IK, and the limits of the movements. 2D side views or top views. Usable from Linux/Windows with installed pygame. Very interesting drawings. Use pygame.quit() to close the window.

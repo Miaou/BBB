@@ -1,6 +1,6 @@
 libServo is a BeagleBone Black (BBB) library to control multiple servos using a single PRU.
 It was designed to generate signals for servos with the "highest but not too annoying" efficiency.
-Because servos have a (strange/weird) way of being controlled: a signal high between 700탎 to 2500탎, then low, repeated every 20ms. A PWM with duty cycle between 3% and 12%...
+Because servos have a [strange/weird] way of being controlled: a signal high between 700탎 to 2500탎, then low, repeated every 20ms. Kind of a PWM with duty cycle between 3% and 12%...
 So we need a software PWM to handle the accuracy requirement (~8탎 resolution).
 
 libServo has two parts:
@@ -8,6 +8,15 @@ libServo has two parts:
 - a Python3 interface which eases the communication with the PRU.
 
 Hence, the BBB can handle the control of 18+ servos with 0% CPU usage...
+
+
+libServo relies on 2 other libraries, which are somewhere in this git repo (so you may need to keep more than just this folder):
+- the PRU assembler (https://github.com/beagleboard/am335x_pru_package)
+- my fork of the pypruss package (https://github.com/Miaou/pypruss-fork) (I forked it to make it Py3)
+Then you should change the Makefile:
+- change the PATH_PRU_SW
+- change the PATH_PYPRUSS
+Then you can "make all" to obtain the ready-to-go lib, and test it with "python3 servos.py" which should exit without exception
 
 
 Note: current code makes the servos work at the same time, which may lead to a huge surge of current from the Power Supply Unit.
